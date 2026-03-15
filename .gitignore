@@ -1,0 +1,13 @@
+# Build
+build/
+
+# Fichiers de test (WAV trop lourds pour git)
+test/*.wav
+
+# Fichiers générés Visual Studio
+*.user
+*.suo
+.vs/
+
+# Mémoire Claude (usage local)
+.claude/
