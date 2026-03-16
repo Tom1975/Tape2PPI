@@ -1,8 +1,8 @@
 # Build
 build/
 
-# Fichiers de test (WAV trop lourds pour git)
-test/*.wav
+# Répertoire de test (fichiers WAV trop lourds pour git)
+test/
 
 # Fichiers générés Visual Studio
 *.user

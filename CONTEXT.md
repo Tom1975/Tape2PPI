@@ -157,6 +157,28 @@ g++ -std=c++17 -O2 -Isrc \
 |-------|----------------|-------|
 | Mach 3 16ST → PPI | 81% | Pilote 0% d'erreur, L/S err=12.5% |
 
+### Test batch (mode `--batch test/`) — 13 fichiers
+
+| Fichier | Source | Blocs | Protection |
+|---------|--------|-------|------------|
+| `10th_Frame__RERELEASE_KIXX.wav` | PPI | 5 | Standard ROM |
+| `k7 - 10th frames (US Gold - 1986).wav` | PPI | 5 | Standard ROM |
+| `k7 - Mach 3 (Loriciel - 1987).wav` | PPI | 6 | Speedlock |
+| `Mach 3 16ST.wav` | CASSETTE | 6 | Speedlock |
+| `Combat School.wav` | PPI | 8 | Standard ROM |
+| `Combat School Demo.wav` | PPI | 3 | Standard ROM |
+| `Combat School - Levels.wav` | PPI | 5 | — |
+| `Gryzor.wav` | PPI | 6 | Standard ROM |
+| `BB6BCSW.WAV` | PPI | 1 | — |
+| `Big Box Face 6B 16ST.wav` | ? | 30 | Standard ROM |
+| `Combat School Face A 16M.wav` | ? | 11 | — |
+| `Combat School Face B 16M.wav` | ? | 11 | Standard ROM |
+| `Gryzor 16M image + bloc 1 + bloc 2 data ok.wav` | ? | 5 | Standard ROM |
+
+**Problèmes identifiés :**
+- Les fichiers `16M` / `16ST` (enregistrements cassette 16-bit) sont classifiés `?` au lieu de `CASSETTE` → à corriger dans `source_detector`
+- Faux match `Mach 3 16ST` ↔ `BB6BCSW.WAV` à ratio ×631 (absurde) — le filtre sur speed ratio doit rejeter les ratios hors [0.5, 2.0]
+
 ---
 
 ## Notes techniques importantes
