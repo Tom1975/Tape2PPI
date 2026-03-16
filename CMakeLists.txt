@@ -10,6 +10,12 @@ add_executable(cpc_wav_analyzer
     src/source_detector.cpp
     src/signal_analyzer.cpp
     src/block_analyzer.cpp
+    src/protection_detector.cpp
+    src/dump_matcher.cpp
+    src/signal_converter.cpp
+    src/wav_writer.cpp
+    src/conversion_validator.cpp
+    src/batch_processor.cpp
 )
 
 target_include_directories(cpc_wav_analyzer PRIVATE src)
