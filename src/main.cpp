@@ -8,6 +8,10 @@
 #include "block_analyzer.h"
 #include "protection_detector.h"
 #include "dump_matcher.h"
+#include "signal_converter.h"
+#include "conversion_validator.h"
+#include "wav_writer.h"
+#include "batch_processor.h"
 
 // ============================================================
 //  Structure regroupant l'analyse complète d'un fichier
@@ -155,10 +159,17 @@ static void printMatch(const DumpInfo& d1, const DumpInfo& d2, const DumpMatch& 
 // ============================================================
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        printf("Usage: %s fichier1.wav [fichier2.wav]\n", argv[0]);
-        printf("  1 fichier  : analyse individuelle\n");
-        printf("  2 fichiers : analyse + appariement\n");
+        printf("Usage:\n");
+        printf("  %s fichier.wav [...]        — analyse individuelle\n", argv[0]);
+        printf("  %s fichier1.wav fichier2.wav — analyse + appariement + conversion\n", argv[0]);
+        printf("  %s --batch répertoire/      — traitement batch d'un répertoire\n", argv[0]);
         return 1;
+    }
+
+    // Mode batch
+    if (argc == 3 && std::string(argv[1]) == "--batch") {
+        runBatch(argv[2]);
+        return 0;
     }
 
     // Mode analyse individuelle (1 ou plusieurs fichiers)
@@ -184,5 +195,75 @@ int main(int argc, char* argv[]) {
         d2.seg.blocks, d2.analyses, d2.protection);
     printMatch(d1, d2, m);
 
+    // ---- Conversion ----
+    if (m.result == DumpMatch::Result::FAILED) {
+        printf("Conversion ignorée (appariement échoué).\n");
+        return 0;
+    }
+
+    const bool d1Cassette = (d1.detection.source == SourceType::CASSETTE);
+    const bool d2Cassette = (d2.detection.source == SourceType::CASSETTE);
+
+    if (d1Cassette == d2Cassette) {
+        printf("Conversion ignorée (les deux fichiers sont de même source : %s).\n",
+               d1Cassette ? "CASSETTE" : "PPI");
+        return 0;
+    }
+
+    const DumpInfo& cassette = d1Cassette ? d1 : d2;
+    const DumpInfo& ppi      = d1Cassette ? d2 : d1;
+
+    const ConversionParams params = extractConversionParams(cassette.analyses, m);
+
+    printf("══════════════════════════════════════════\n");
+    printf("  CONVERSION  (speed ratio ×%.4f)\n", params.speedRatio);
+    printf("══════════════════════════════════════════\n");
+    printf("  Pilote de référence : %.0f Hz\n", params.pilotFreqHz);
+    printf("  Cutoff LPF          : %.0f Hz  (3× pilote)\n", params.pilotFreqHz * 3.0);
+
+    // --- Cassette → PPI ---
+    {
+        const std::string outPath = std::string(cassette.filepath) + "_to_PPI.wav";
+        printf("\n  [Cassette → PPI] : %s\n", outPath.c_str());
+        const std::vector<float> result = convertToPPI(
+            cassette.reader.samples(), cassette.reader.info().sampleRate);
+        if (writeWav(outPath.c_str(), result, cassette.reader.info().sampleRate))
+            printf("    Écrit : %u samples @ %u Hz\n",
+                   static_cast<unsigned>(result.size()),
+                   cassette.reader.info().sampleRate);
+        else
+            printf("    ERREUR : impossible d'écrire %s\n", outPath.c_str());
+
+        // Validation : re-analyser le converti et comparer avec le PPI de référence
+        WavReader convReader;
+        if (convReader.load(outPath)) {
+            const SegmentationResult convSeg = segmentSignal(convReader);
+            std::vector<BlockAnalysis> convAnalyses;
+            convAnalyses.reserve(convSeg.blocks.size());
+            for (const Block& b : convSeg.blocks)
+                convAnalyses.push_back(analyzeBlock(convReader, b));
+
+            printf("\n");
+            const ConversionQuality q = validateConversion(ppi.analyses, convAnalyses);
+            printConversionQuality(q);
+        }
+    }
+
+    // --- PPI → Cassette ---
+    {
+        const std::string outPath = std::string(ppi.filepath) + "_to_cassette.wav";
+        const double cutoff = params.pilotFreqHz * 3.0;
+        printf("  [PPI → Cassette] : %s\n", outPath.c_str());
+        const std::vector<float> result = convertToCassette(
+            ppi.reader.samples(), ppi.reader.info().sampleRate, cutoff);
+        if (writeWav(outPath.c_str(), result, ppi.reader.info().sampleRate))
+            printf("    Écrit : %u samples @ %u Hz\n",
+                   static_cast<unsigned>(result.size()),
+                   ppi.reader.info().sampleRate);
+        else
+            printf("    ERREUR : impossible d'écrire %s\n", outPath.c_str());
+    }
+
+    printf("\n");
     return 0;
 }

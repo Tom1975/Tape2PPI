@@ -18,11 +18,20 @@ La détection automatique de la source est nécessaire pour appliquer les bons t
 ```
 Tape2PPI/
 ├── src/
-│   ├── wav_reader.h / .cpp       # Lecture WAV (Phase 1 ✅)
-│   ├── source_detector.h / .cpp  # Détection cassette vs PPI (Phase 1 ✅)
-│   ├── signal_analyzer.h / .cpp  # Segmentation en blocs (Phase 2 ✅)
-│   ├── block_analyzer.h / .cpp   # Analyse interne des blocs (Phase 3 ✅)
-│   └── main.cpp                  # Affichage des résultats
+│   ├── wav_reader.h / .cpp           # Lecture WAV (Phase 1 ✅)
+│   ├── source_detector.h / .cpp      # Détection cassette vs PPI (Phase 1 ✅)
+│   ├── signal_analyzer.h / .cpp      # Segmentation en blocs (Phase 2 ✅)
+│   ├── block_analyzer.h / .cpp       # Analyse interne des blocs (Phase 3 ✅)
+│   ├── protection_detector.h / .cpp  # Détection de protection (Phase 4 ✅)
+│   ├── dump_matcher.h / .cpp         # Appariement cassette ↔ PPI (Phase 5 ✅)
+│   ├── signal_converter.h / .cpp     # Conversion signal (Phase 6+7 ✅)
+│   ├── conversion_validator.h / .cpp # Validation qualité conversion (Phase 7 ✅)
+│   ├── batch_processor.h / .cpp      # Traitement batch répertoire (Phase 7 ✅)
+│   ├── wav_writer.h / .cpp           # Écriture WAV PCM 16 bits (Phase 6 ✅)
+│   └── main.cpp                      # Point d'entrée (modes 1 fichier / 2 fichiers / batch)
+├── export/
+│   ├── tape_to_ppi_converter.h       # Export émulateur — convertisseur causal (Phase 7 ✅)
+│   └── tape_to_ppi_converter.cpp     # Implémentation sans dépendance externe
 ├── test/
 │   ├── 10th_Frame__RERELEASE_KIXX.wav      # PPI, 44100 Hz, 8 bits
 │   ├── k7 - 10th frames (US Gold - 1986).wav  # PPI, 44100 Hz, 8 bits
@@ -34,9 +43,19 @@ Tape2PPI/
 
 ### Compilation
 ```bash
-g++ -std=c++17 -O2 -Isrc src/main.cpp src/wav_reader.cpp src/source_detector.cpp \
-    src/signal_analyzer.cpp src/block_analyzer.cpp -o cpc_wav_analyzer
-./cpc_wav_analyzer fichier.wav [fichier2.wav ...]
+g++ -std=c++17 -O2 -Isrc \
+  src/main.cpp src/wav_reader.cpp src/source_detector.cpp \
+  src/signal_analyzer.cpp src/block_analyzer.cpp src/protection_detector.cpp \
+  src/dump_matcher.cpp src/signal_converter.cpp src/wav_writer.cpp \
+  src/conversion_validator.cpp src/batch_processor.cpp \
+  -o cpc_wav_analyzer
+```
+
+### Utilisation
+```bash
+./cpc_wav_analyzer fichier.wav               # analyse individuelle
+./cpc_wav_analyzer fichier1.wav fichier2.wav # analyse + appariement + conversion
+./cpc_wav_analyzer --batch répertoire/       # traitement batch
 ```
 
 ---
@@ -72,19 +91,36 @@ g++ -std=c++17 -O2 -Isrc src/main.cpp src/wav_reader.cpp src/source_detector.cpp
 **Règle sync** : obligatoire pour le **bloc 1** de chaque dump, optionnel ensuite
 (les protections Speedlock, Bleepload, etc. n'ont pas forcément de sync sur les blocs suivants).
 
-### Phase 4 — Identification des blocs complexes 🔜
-Détection de loaders spéciaux : Speedlock, Bleepload, etc.
-Analyse heuristique de la forme d'onde pour les cas non standards.
+### Phase 4 — Détection de protection ✅
+- Scoring multi-critères : fréquence pilote, durée pilote, fraction DATA_ONLY, ratio L/S
+- Types reconnus : **Standard ROM** (pilote 500–900 Hz, durée 2–5 s, peu de DATA_ONLY)
+  et **Speedlock** (pilote 1000–2000 Hz, durée < 1.8 s, majorité DATA_ONLY)
+- Si aucun score ≥ 0.55 : protection **INCONNUE** (pas de forçage)
+- Sync bloc 1 obligatoire pour valider quoi que ce soit
 
-### Phase 5 — Association cassette ↔ PPI 🔜
-- Appairage des blocs entre les deux fichiers (par numéro, durée, structure)
-- Vérification de similarité (corrélation temporelle, forme générale)
-- Tolérance sur les durées (le PPI peut être légèrement plus rapide/lent)
+### Phase 5 — Appariement cassette ↔ PPI ✅
+- Appariement séquentiel des blocs (même index)
+- Speed ratio = médiane(dur2/dur1) sur les blocs > 0.5 s
+- Consistance = 1 − CV×5 (coefficient de variation des ratios)
+- Confiance : nombre de blocs (+0.35), CV bas (+0.35), structures compatibles (+0.20), même protection (+0.10)
+- Résultat : MATCHED ≥ 0.70, PARTIAL ≥ 0.40, FAILED sinon
 
-### Phase 6 — Fonction de conversion 🔜
-- Modélisation de la transformation cassette → PPI (ou inverse)
-- La fonction doit être générique : applicable à tous les dumps du même type
-- Objectif : pouvoir reconstruire un signal PPI depuis une cassette et vice-versa
+### Phase 6 — Conversion signal ✅
+- **Cassette → PPI** : comparateur adaptatif (DC offset 50 ms + hystérésis 8% RMS locale 10 ms)
+- **PPI → Cassette** : filtfilt IIR passe-bas (cutoff = 3× fréquence pilote) + renormalisation
+- Écriture WAV PCM 16 bits signé mono (`wav_writer`)
+- En mode 2 fichiers : conversion automatique si sources différentes, validation après conversion
+
+### Phase 7 — Affinage, validation batch et export émulateur ✅
+- **Validateur** (`conversion_validator`) : score par bloc comparant pilote (fréquence, durée),
+  codage L/S et sync 0x16 du converti vs PPI de référence
+- **Mode batch** (`--batch répertoire/`) : analyse tous les WAV, appariement automatique
+  cassettes × PPI, conversion + validation, bilan global ; ignore les fichiers générés
+- **Export émulateur** (`export/tape_to_ppi_converter.h/.cpp`) :
+  - Classe `TapeToPPIConverter` causale, traitement échantillon par échantillon
+  - Filtre passe-haut IIR (couplage AC, ~7 Hz, modélise le condensateur CPC)
+  - Trigger de Schmitt avec hystérésis adaptative (RMS exponentielle)
+  - Aucune dépendance externe (C++11, `<cmath>` uniquement)
 
 ---
 
@@ -107,6 +143,19 @@ Analyse heuristique de la forme d'onde pour les cas non standards.
 | `Mach 3 16ST.wav` | 6 | 1412 Hz, S=8 L=18 | ✓ | Blocs 3-5 sans pilote (loader custom) |
 | `k7 - 10th frames (US Gold - 1986).wav` | 5 | 735 Hz, S=16 L=30 | ✓ | Blocs 1-2 à 735 Hz, blocs 3-5 à 760 Hz |
 | `k7 - Mach 3 (Loriciel - 1987).wav` | 6 | 1378 Hz, S=8 L=16 | ✓ | Blocs 2-5 sans pilote (loader custom) |
+
+### Phase 5 (appariement) — résultats observés
+
+| Paire | Résultat | Confiance | Speed ratio | Notes |
+|-------|---------|-----------|-------------|-------|
+| Mach 3 cassette ↔ PPI | APPARIÉ | 100% | ×1.0239 | PPI 2.4% plus lent |
+| 10th Frame PPI ↔ PPI | APPARIÉ | 75% | ×1.0856 | Deux fichiers PPI — même source |
+
+### Phase 7 (conversion + validation) — résultats observés
+
+| Paire | Score conversion | Notes |
+|-------|----------------|-------|
+| Mach 3 16ST → PPI | 81% | Pilote 0% d'erreur, L/S err=12.5% |
 
 ---
 
@@ -148,3 +197,17 @@ PILOT_WINDOW       = 40     // taille fenêtre glissante pour fin de pilote
 PILOT_WIN_RATIO    = 0.60   // fraction min in-range dans la fenêtre
 PILOT_MIN_EDGES    = 40     // transitions min pour valider un pilote
 ```
+
+### Paramètres clés de `signal_converter.cpp`
+```
+DC_WIN_MS  = 50 ms   // fenêtre suppression DC (moyenne glissante symétrique)
+RMS_WIN_MS = 10 ms   // fenêtre estimation RMS locale (hystérésis adaptative)
+HYST_FRAC  = 0.08    // hystérésis = 8% de la RMS locale
+HYST_MIN   = 0.02    // hystérésis minimale absolue (zones de silence)
+```
+
+### Export émulateur (`export/tape_to_ppi_converter`)
+- Classe causale (temps réel, pas de look-ahead)
+- HP IIR : `y[n] = alpha*(y[n-1] + x[n] - x[n-1])`, cutoff ~7 Hz par défaut
+- RMS exponentielle : alpha = exp(-1/(fs×0.010)), hystérésis = max(2%, 5%×RMS)
+- `setACCouplingHz(hz)` et `setHysteresis(frac)` pour ajustement fin
