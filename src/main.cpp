@@ -3,6 +3,7 @@
 #include "source_detector.h"
 #include "signal_analyzer.h"
 #include "block_analyzer.h"
+#include "protection_detector.h"
 
 // ============================================================
 //  Affiche les infos d'un fichier WAV chargé
@@ -66,11 +67,16 @@ int main(int argc, char* argv[]) {
                seg.params.silenceThreshold,
                seg.params.silenceMinDurSec * 1000.0,
                seg.params.blockMinDurSec   * 1000.0);
+
+        // Analyser tous les blocs, puis détecter la protection au niveau du dump
+        std::vector<BlockAnalysis> allAnalyses;
+        allAnalyses.reserve(seg.blocks.size());
         for (const Block& b : seg.blocks) {
             printf("    [%2d] %8.3f s → %8.3f s  (%.3f s)  amp max=%.4f\n",
                    b.index, b.startSec, b.endSec, b.durationSec, b.maxAmplitude);
 
             const BlockAnalysis ba = analyzeBlock(reader, b);
+            allAnalyses.push_back(ba);
             switch (ba.structure) {
                 case BlockAnalysis::Structure::PILOT_DATA:
                     printf("         Pilote : %.0f Hz — %.3f s (%ld fronts)\n",
@@ -98,6 +104,26 @@ int main(int argc, char* argv[]) {
                     break;
             }
         }
+
+        // Protection au niveau du dump
+        const ProtectionAnalysis prot = detectProtection(allAnalyses,
+                                                          reader.info().sampleRate);
+        printf("  Protection     : ");
+        switch (prot.type) {
+            case ProtectionType::STANDARD_ROM:
+                printf("Standard ROM  (confiance %.0f%%)\n", prot.confidence * 100);
+                break;
+            case ProtectionType::SPEEDLOCK:
+                printf("Speedlock     (confiance %.0f%%)\n", prot.confidence * 100);
+                break;
+            case ProtectionType::BLEEPLOAD:
+                printf("Bleepload     (confiance %.0f%%)\n", prot.confidence * 100);
+                break;
+            default:
+                printf("Inconnue      (confiance max %.0f%%)\n", prot.confidence * 100);
+                break;
+        }
+        printf("  Détails        : %s\n", prot.details.c_str());
         printf("\n");
     }
 
