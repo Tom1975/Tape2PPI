@@ -45,6 +45,20 @@ SegmentationResult segmentSignal(const WavReader& reader,
 
     if (N == 0) return result;
 
+    // --- Amplitude maximale globale du fichier ---
+    // Le seuil de silence est exprimé en fraction de cette amplitude,
+    // ce qui permet de traiter correctement les fichiers à faible niveau
+    // (ex: enregistrement cassette atténué par une protection).
+    float globalMax = 0.0f;
+    for (size_t i = 0; i < N; ++i)
+        globalMax = std::max(globalMax, fabsf(s[i]));
+
+    // Seuil effectif : on prend le max entre le seuil absolu configuré et
+    // 5 % de l'amplitude crête du fichier. Ainsi un signal à 0.1 de peak
+    // aura un seuil de silence à 0.005, pas à 0.05.
+    const float effectiveThreshold = std::max(params.silenceThreshold,
+                                              globalMax * 0.05f);
+
     // --- Étape 1 : enveloppe courte (5 ms) ---
     const std::vector<float> env = computeEnvelope(s, sr);
 
@@ -60,7 +74,7 @@ SegmentationResult segmentSignal(const WavReader& reader,
     bool   inSil    = false;
 
     for (size_t i = 0; i <= N; ++i) {
-        const bool silent = (i < N) && (env[i] < params.silenceThreshold);
+        const bool silent = (i < N) && (env[i] < effectiveThreshold);
 
         if (!inSil && silent) {
             silStart = i;
@@ -96,7 +110,7 @@ SegmentationResult segmentSignal(const WavReader& reader,
             maxAmp = std::max(maxAmp, fabsf(s[j]));
 
         // Ignorer les régions trop silencieuses (ex: silence de début/fin de fichier)
-        if (maxAmp < params.silenceThreshold) continue;
+        if (maxAmp < effectiveThreshold) continue;
 
         // Ignorer les blocs trop courts (bruit dans une plage de silence)
         const double durSec = static_cast<double>(end - start) / sr;

@@ -22,6 +22,16 @@ struct BlockAnalysis {
     bool   hasData        = false;
     double dataStartSec   = 0.0;
 
+    // Codage des bits de données (distribution bimodale S/L)
+    bool   encodingValid  = false;
+    double shortHP        = 0.0;   // demi-période courte (samples)
+    double longHP         = 0.0;   // demi-période longue (samples)
+
+    // Sync : pulse de sync + premier octet (0x16 attendu)
+    bool    hasSyncPulse   = false;
+    bool    firstByteValid = false;
+    uint8_t firstByte      = 0;
+
     enum class Structure {
         UNKNOWN,        // signal trop court ou inanalysable
         PILOT_ONLY,     // pilote sans données détectées

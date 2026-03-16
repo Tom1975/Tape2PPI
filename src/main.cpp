@@ -75,6 +75,15 @@ int main(int argc, char* argv[]) {
                 case BlockAnalysis::Structure::PILOT_DATA:
                     printf("         Pilote : %.0f Hz — %.3f s (%ld fronts)\n",
                            ba.pilotFreqHz, ba.pilotDurSec, ba.pilotEdgeCount);
+                    if (ba.encodingValid)
+                        printf("         Codage : S=%.1f L=%.1f samples (×%.2f)\n",
+                               ba.shortHP, ba.longHP, ba.longHP / ba.shortHP);
+                    if (ba.hasSyncPulse)
+                        printf("         Sync   : pulse détecté\n");
+                    if (ba.firstByteValid)
+                        printf("         Octet1 : 0x%02X ✓\n", ba.firstByte);
+                    else
+                        printf("         Octet1 : non décodé\n");
                     printf("         Données: à partir de %.3f s\n", ba.dataStartSec);
                     break;
                 case BlockAnalysis::Structure::PILOT_ONLY:
