@@ -52,6 +52,7 @@ static constexpr double DC_WIN_MS  = 50.0;   // fenêtre DC (ms)
 static constexpr double RMS_WIN_MS = 10.0;   // fenêtre RMS (ms)
 static constexpr float  HYST_FRAC  = 0.08f;  // hystérésis = 8% de la RMS locale
 static constexpr float  HYST_MIN   = 0.02f;  // hystérésis minimale absolue
+static constexpr float  SILENCE_RMS = 0.02f; // en dessous : silence → sortie 0
 
 std::vector<float> convertToPPI(const std::vector<float>& src,
                                 uint32_t sampleRate)
@@ -90,6 +91,14 @@ std::vector<float> convertToPPI(const std::vector<float>& src,
         const size_t lo  = (i > rmsHalf) ? i - rmsHalf : 0;
         const size_t hi  = std::min(i + rmsHalf + 1, N);
         const double rms = std::sqrt((prefixSq[hi] - prefixSq[lo]) / static_cast<double>(hi - lo));
+
+        // Silence : signal sous le seuil → émettre 0 (préserve les silences pour
+        // la segmentation aval, évite que le Schmitt trigger maintienne ±1 au repos)
+        if (static_cast<float>(rms) < SILENCE_RMS) {
+            out[i] = 0.0f;
+            continue;
+        }
+
         const float  hyst = std::max(HYST_MIN, HYST_FRAC * static_cast<float>(rms));
 
         if (dc[i] >= hyst)

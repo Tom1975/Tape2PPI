@@ -101,7 +101,7 @@ bool WavReader::parseData(FILE* f, uint32_t chunkSize) {
     m_samples.reserve(numFrames);
 
     for (uint32_t i = 0; i < numFrames; ++i) {
-        float mono = 0.0f;
+        float sample = 0.0f;
 
         for (uint16_t ch = 0; ch < m_info.numChannels; ++ch) {
             int32_t raw = 0;
@@ -123,11 +123,13 @@ bool WavReader::parseData(FILE* f, uint32_t chunkSize) {
                 }
             }
 
-            mono += normalizeSample(raw);
+            // Canal gauche uniquement (fidèle au hardware CPC : entrée EAR mono,
+            // seule la pointe du jack est connectée au circuit d'interface).
+            if (ch == 0)
+                sample = normalizeSample(raw);
         }
 
-        // Downmix : moyenne des canaux
-        m_samples.push_back(mono / static_cast<float>(m_info.numChannels));
+        m_samples.push_back(sample);
     }
 
     return true;
