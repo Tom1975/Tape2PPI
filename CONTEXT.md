@@ -118,8 +118,9 @@ g++ -std=c++17 -O2 -Isrc \
   cassettes × PPI, conversion + validation, bilan global ; ignore les fichiers générés
 - **Export émulateur** (`export/tape_to_ppi_converter.h/.cpp`) :
   - Classe `TapeToPPIConverter` causale, traitement échantillon par échantillon
-  - Filtre passe-haut IIR (couplage AC, ~7 Hz, modélise le condensateur CPC)
-  - Trigger de Schmitt avec hystérésis adaptative (RMS exponentielle)
+  - Filtre passe-haut IIR (couplage AC, fc=7.2 Hz, τ=R318×C319=22 ms)
+  - Deux étages Schmitt trigger à hystérésis fixe (schéma CPC 464/664/6128) :
+    étage 1 (IC302 pins 5/6/7) ≈ 3%, étage 2 (IC302 pins 9/10/8) ≈ 12%
   - Aucune dépendance externe (C++11, `<cmath>` uniquement)
 
 ---
@@ -222,14 +223,20 @@ PILOT_MIN_EDGES    = 40     // transitions min pour valider un pilote
 
 ### Paramètres clés de `signal_converter.cpp`
 ```
-DC_WIN_MS  = 50 ms   // fenêtre suppression DC (moyenne glissante symétrique)
-RMS_WIN_MS = 10 ms   // fenêtre estimation RMS locale (hystérésis adaptative)
-HYST_FRAC  = 0.08    // hystérésis = 8% de la RMS locale
-HYST_MIN   = 0.02    // hystérésis minimale absolue (zones de silence)
+DC_WIN_MS    = 50 ms   // fenêtre suppression DC (moyenne glissante symétrique)
+RMS_WIN_MS   = 10 ms   // fenêtre estimation RMS locale (hystérésis adaptative)
+HYST_FRAC    = 0.08    // hystérésis = 8% de la RMS locale
+HYST_MIN     = 0.02    // hystérésis minimale absolue
+SILENCE_RMS  = 0.02    // en dessous : silence → sortie 0 (préserve les silences inter-blocs)
 ```
+
+**Note** : `wav_reader` utilise le canal gauche uniquement pour les fichiers stéréo (fidèle
+au câblage hardware CPC : seule la pointe du jack stéréo est connectée à l'entrée EAR).
 
 ### Export émulateur (`export/tape_to_ppi_converter`)
 - Classe causale (temps réel, pas de look-ahead)
-- HP IIR : `y[n] = alpha*(y[n-1] + x[n] - x[n-1])`, cutoff ~7 Hz par défaut
-- RMS exponentielle : alpha = exp(-1/(fs×0.010)), hystérésis = max(2%, 5%×RMS)
-- `setACCouplingHz(hz)` et `setHysteresis(frac)` pour ajustement fin
+- HP IIR : `y[n] = alpha*(y[n-1] + x[n] - x[n-1])`, cutoff 7.2 Hz (τ = R318×C319 = 22 ms)
+- Étage 1 — Schmitt trigger fixe : hystérésis ≈ 3% (R310 = 470 kΩ, IC302 pins 5/6/7)
+- Étage 2 — Schmitt trigger fixe : hystérésis ≈ 12% (R307 = 47 kΩ, IC302 pins 9/10/8)
+- Note de polarité : 3 inversions au total (transistor + 2 comparateurs) → sortie inversée
+- `setACCouplingHz(hz)`, `setHysteresis1(frac)`, `setHysteresis2(frac)` pour ajustement fin
