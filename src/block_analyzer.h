@@ -7,8 +7,9 @@
 //  Analyse interne d'un bloc : pilote, sync, données
 // ============================================================
 struct BlockAnalysis {
-    int    blockIndex     = 0;
-    long   totalEdgeCount = 0;   // transitions totales dans le bloc
+    int      blockIndex     = 0;
+    long     totalEdgeCount = 0;   // transitions totales dans le bloc
+    uint32_t sampleRate     = 0;   // sample rate du fichier source (pour conversion en µs)
 
     // Pilote
     bool   hasPilot       = false;

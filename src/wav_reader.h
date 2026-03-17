@@ -19,7 +19,8 @@ struct WavInfo {
 //  WavReader
 //  Lit un fichier WAV PCM (8/16/24/32 bits, mono ou stéréo).
 //  Les samples sont normalisés en float [-1.0, +1.0].
-//  Pour un fichier stéréo, un downmix vers mono est effectué.
+//  Pour un fichier stéréo, seul le canal gauche est utilisé
+//  (fidèle au hardware CPC : entrée EAR connectée à la pointe du jack uniquement).
 // ============================================================
 class WavReader {
 public:

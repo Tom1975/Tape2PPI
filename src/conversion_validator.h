@@ -21,9 +21,8 @@ struct BlockConversionQuality {
     // --- Codage S/L ---
     bool encodingRefValid  = false;
     bool encodingConvValid = false;
-    double shortHPErr      = 0.0;    // erreur relative (%) sur S
-    double longHPErr       = 0.0;    // erreur relative (%) sur L
-    double lsRatioErr      = 0.0;    // erreur relative (%) sur le ratio L/S
+    double shortHPErrUs    = 0.0;    // erreur relative (%) sur S en µs (speed-corrected)
+    double longHPErrUs     = 0.0;    // erreur relative (%) sur L en µs (speed-corrected)
 
     // --- Sync 0x16 ---
     bool syncRef  = false;
@@ -53,9 +52,13 @@ struct ConversionQuality {
 // Compare le signal converti (analysé) avec le PPI de référence.
 // refAnalyses   : analyses du PPI de référence (ground truth)
 // convAnalyses  : analyses du signal cassette converti en PPI
+// speedRatio    : ratio de vitesse cassette/PPI (cassette ÷ speedRatio = PPI)
+//                 Permet de corriger la différence de sample rate + vitesse
+//                 avant de comparer S et L en µs absolus.
 ConversionQuality validateConversion(
     const std::vector<BlockAnalysis>& refAnalyses,
-    const std::vector<BlockAnalysis>& convAnalyses);
+    const std::vector<BlockAnalysis>& convAnalyses,
+    double speedRatio = 1.0);
 
 // Affiche le rapport de validation sur stdout.
 void printConversionQuality(const ConversionQuality& q);

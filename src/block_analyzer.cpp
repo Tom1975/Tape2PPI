@@ -215,6 +215,7 @@ BlockAnalysis analyzeBlock(const WavReader& reader, const Block& block) {
 
     BlockAnalysis result;
     result.blockIndex = block.index;
+    result.sampleRate = sr;
 
     if (block.endSample <= block.startSample) return result;
 

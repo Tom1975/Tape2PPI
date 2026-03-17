@@ -28,7 +28,8 @@ Tape2PPI/
 │   ├── conversion_validator.h / .cpp # Validation qualité conversion (Phase 7 ✅)
 │   ├── batch_processor.h / .cpp      # Traitement batch répertoire (Phase 7 ✅)
 │   ├── wav_writer.h / .cpp           # Écriture WAV PCM 16 bits (Phase 6 ✅)
-│   └── main.cpp                      # Point d'entrée (modes 1 fichier / 2 fichiers / batch)
+│   ├── dataset_exporter.h / .cpp      # Export paires de blocs pour entraînement ML (Phase 8)
+│   └── main.cpp                      # Point d'entrée (modes 1 fichier / 2 fichiers / batch / export)
 ├── export/
 │   ├── tape_to_ppi_converter.h       # Export émulateur — convertisseur causal (Phase 7 ✅)
 │   └── tape_to_ppi_converter.cpp     # Implémentation sans dépendance externe
@@ -37,6 +38,7 @@ Tape2PPI/
 │   ├── k7 - 10th frames (US Gold - 1986).wav  # PPI, 44100 Hz, 8 bits
 │   ├── k7 - Mach 3 (Loriciel - 1987).wav   # PPI, 44100 Hz, 8 bits
 │   └── Mach 3 16ST.wav                      # CASSETTE, 48000 Hz, 16 bits stéréo
+├── elec.bmp                              # Schéma du circuit de lecture cassette CPC
 ├── CONTEXT.md
 └── CMakeLists.txt
 ```
@@ -47,7 +49,7 @@ g++ -std=c++17 -O2 -Isrc \
   src/main.cpp src/wav_reader.cpp src/source_detector.cpp \
   src/signal_analyzer.cpp src/block_analyzer.cpp src/protection_detector.cpp \
   src/dump_matcher.cpp src/signal_converter.cpp src/wav_writer.cpp \
-  src/conversion_validator.cpp src/batch_processor.cpp \
+  src/conversion_validator.cpp src/batch_processor.cpp src/dataset_exporter.cpp \
   -o cpc_wav_analyzer
 ```
 
@@ -56,6 +58,7 @@ g++ -std=c++17 -O2 -Isrc \
 ./cpc_wav_analyzer fichier.wav               # analyse individuelle
 ./cpc_wav_analyzer fichier1.wav fichier2.wav # analyse + appariement + conversion
 ./cpc_wav_analyzer --batch répertoire/       # traitement batch
+./cpc_wav_analyzer --export-dataset src/ out/ # export paires de blocs (dataset ML)
 ```
 
 ---
@@ -113,7 +116,9 @@ g++ -std=c++17 -O2 -Isrc \
 
 ### Phase 7 — Affinage, validation batch et export émulateur ✅
 - **Validateur** (`conversion_validator`) : score par bloc comparant pilote (fréquence, durée),
-  codage L/S et sync 0x16 du converti vs PPI de référence
+  codage S/L en µs avec correction du speed ratio, et sync 0x16 du converti vs PPI de référence
+  — comparaison en µs (pas en samples) pour s'affranchir des différences de sample rate entre
+  cassette (48000 Hz) et PPI (44100 Hz) ; `sampleRate` ajouté dans `BlockAnalysis`
 - **Mode batch** (`--batch répertoire/`) : analyse tous les WAV, appariement automatique
   cassettes × PPI, conversion + validation, bilan global ; ignore les fichiers générés
 - **Export émulateur** (`export/tape_to_ppi_converter.h/.cpp`) :
@@ -122,6 +127,15 @@ g++ -std=c++17 -O2 -Isrc \
   - Deux étages Schmitt trigger à hystérésis fixe (schéma CPC 464/664/6128) :
     étage 1 (IC302 pins 5/6/7) ≈ 3%, étage 2 (IC302 pins 9/10/8) ≈ 12%
   - Aucune dépendance externe (C++11, `<cmath>` uniquement)
+
+### Phase 8 — Export dataset ML ✅
+- **Mode `--export-dataset src/ out/`** (`dataset_exporter`) :
+  - Scanne un répertoire, apparie les paires cassette/PPI (même logique que batch)
+  - Pour chaque bloc apparié : `block_NNNN_cassette.wav` + `block_NNNN_ppi.wav`
+  - `dataset.json` : métadonnées complètes par bloc (protection, structure, sample rates,
+    speed ratio, durée, fréquence pilote, fichiers source, indices de blocs)
+  - Objectif : constituer un dataset pour entraîner un modèle TCN de conversion cassette→PPI
+  - Estimation : 50–100 paires de fichiers → ~300–600 paires de blocs (avant augmentation)
 
 ---
 
@@ -232,6 +246,11 @@ SILENCE_RMS  = 0.02    // en dessous : silence → sortie 0 (préserve les silen
 
 **Note** : `wav_reader` utilise le canal gauche uniquement pour les fichiers stéréo (fidèle
 au câblage hardware CPC : seule la pointe du jack stéréo est connectée à l'entrée EAR).
+
+### Schéma électronique de référence
+- `elec.bmp` : schéma du circuit de lecture cassette du CPC (chemin du signal de l'entrée EAR
+  jusqu'au PPI 8255) — référence pour les valeurs R/C, les étages Schmitt trigger (IC302),
+  le couplage AC (R318/C319) et la topologie des inversions de polarité.
 
 ### Export émulateur (`export/tape_to_ppi_converter`)
 - Classe causale (temps réel, pas de look-ahead)

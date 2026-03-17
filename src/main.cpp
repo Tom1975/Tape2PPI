@@ -12,6 +12,7 @@
 #include "conversion_validator.h"
 #include "wav_writer.h"
 #include "batch_processor.h"
+#include "dataset_exporter.h"
 
 // ============================================================
 //  Structure regroupant l'analyse complète d'un fichier
@@ -160,15 +161,22 @@ static void printMatch(const DumpInfo& d1, const DumpInfo& d2, const DumpMatch& 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         printf("Usage:\n");
-        printf("  %s fichier.wav [...]        — analyse individuelle\n", argv[0]);
-        printf("  %s fichier1.wav fichier2.wav — analyse + appariement + conversion\n", argv[0]);
-        printf("  %s --batch répertoire/      — traitement batch d'un répertoire\n", argv[0]);
+        printf("  %s fichier.wav [...]              — analyse individuelle\n", argv[0]);
+        printf("  %s fichier1.wav fichier2.wav       — analyse + appariement + conversion\n", argv[0]);
+        printf("  %s --batch répertoire/             — traitement batch d'un répertoire\n", argv[0]);
+        printf("  %s --export-dataset src/ out/      — export paires de blocs pour entraînement ML\n", argv[0]);
         return 1;
     }
 
     // Mode batch
     if (argc == 3 && std::string(argv[1]) == "--batch") {
         runBatch(argv[2]);
+        return 0;
+    }
+
+    // Mode export dataset ML
+    if (argc == 4 && std::string(argv[1]) == "--export-dataset") {
+        exportDataset(argv[2], argv[3]);
         return 0;
     }
 
@@ -244,7 +252,7 @@ int main(int argc, char* argv[]) {
                 convAnalyses.push_back(analyzeBlock(convReader, b));
 
             printf("\n");
-            const ConversionQuality q = validateConversion(ppi.analyses, convAnalyses);
+            const ConversionQuality q = validateConversion(ppi.analyses, convAnalyses, params.speedRatio);
             printConversionQuality(q);
         }
     }

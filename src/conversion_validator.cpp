@@ -10,7 +10,8 @@
 
 ConversionQuality validateConversion(
     const std::vector<BlockAnalysis>& refAnalyses,
-    const std::vector<BlockAnalysis>& convAnalyses)
+    const std::vector<BlockAnalysis>& convAnalyses,
+    double speedRatio)
 {
     ConversionQuality q;
 
@@ -69,17 +70,23 @@ ConversionQuality validateConversion(
         }
 
         // --- Codage S/L (0.25 pts) ---
-        if (ref.encodingValid && conv.encodingValid) {
-            const double refRatio  = ref.longHP  / ref.shortHP;
-            const double convRatio = conv.longHP / conv.shortHP;
+        // Comparaison en µs avec correction du speed ratio :
+        //   ref_µs / speedRatio donne la durée attendue dans le signal converti.
+        // Cela évite l'artefact de quantisation dû aux sample rates différents
+        // (ex : L=16@44100Hz vs L=18@48000Hz ont le même sens physique).
+        if (ref.encodingValid && conv.encodingValid && ref.sampleRate > 0 && conv.sampleRate > 0) {
+            const double refSµs  = ref.shortHP  / ref.sampleRate  * 1e6 / speedRatio;
+            const double refLµs  = ref.longHP   / ref.sampleRate  * 1e6 / speedRatio;
+            const double convSµs = conv.shortHP / conv.sampleRate * 1e6;
+            const double convLµs = conv.longHP  / conv.sampleRate * 1e6;
 
-            bq.shortHPErr  = std::fabs(conv.shortHP - ref.shortHP) / ref.shortHP * 100.0;
-            bq.longHPErr   = std::fabs(conv.longHP  - ref.longHP)  / ref.longHP  * 100.0;
-            bq.lsRatioErr  = std::fabs(convRatio - refRatio) / refRatio * 100.0;
+            bq.shortHPErrUs = std::fabs(convSµs - refSµs) / refSµs * 100.0;
+            bq.longHPErrUs  = std::fabs(convLµs - refLµs) / refLµs * 100.0;
 
-            if      (bq.lsRatioErr < 3.0)  score += 0.25;
-            else if (bq.lsRatioErr < 8.0)  score += 0.15;
-            else if (bq.lsRatioErr < 15.0) score += 0.08;
+            const double maxErr = std::max(bq.shortHPErrUs, bq.longHPErrUs);
+            if      (maxErr < 5.0)  score += 0.25;
+            else if (maxErr < 10.0) score += 0.15;
+            else if (maxErr < 20.0) score += 0.08;
         } else if (!ref.encodingValid) {
             // Pas de vérité terrain sur le codage : pas de pénalité
             score += 0.15;
@@ -100,8 +107,9 @@ ConversionQuality validateConversion(
         char buf[256];
         if (conv.hasPilot) {
             std::snprintf(buf, sizeof(buf),
-                "pilote=%.0f Hz (err=%.1f%%)  L/S err=%.1f%%  sync=%s",
-                conv.pilotFreqHz, bq.pilotFreqErr, bq.lsRatioErr,
+                "pilote=%.0f Hz (err=%.1f%%)  S err=%.1f%% L err=%.1f%%  sync=%s",
+                conv.pilotFreqHz, bq.pilotFreqErr,
+                bq.shortHPErrUs, bq.longHPErrUs,
                 conv.firstByteValid ? "OK" : "NON");
         } else {
             std::snprintf(buf, sizeof(buf), "PILOTE NON DÉTECTÉ");
@@ -135,8 +143,8 @@ ConversionQuality validateConversion(
 
 void printConversionQuality(const ConversionQuality& q) {
     printf("  Qualité de conversion (cassette → PPI) :\n");
-    printf("  %-5s  %-6s  %-14s  %-13s  %-8s  %s\n",
-           "Bloc", "Score", "Pilote (err%)", "L/S (err%)", "Sync", "Détails");
+    printf("  %-5s  %-6s  %-14s  %-22s  %-8s  %s\n",
+           "Bloc", "Score", "Pilote (err%)", "S/L err µs", "Sync", "Détails");
 
     for (const auto& bq : q.blocks) {
         if (!bq.pilotRefFound) {

@@ -190,7 +190,7 @@ void runBatch(const std::string& directory)
             convAnalyses.push_back(analyzeBlock(convReader, b));
 
         // Validation : converti vs PPI de référence
-        const ConversionQuality q = validateConversion(mp.ppi->analyses, convAnalyses);
+        const ConversionQuality q = validateConversion(mp.ppi->analyses, convAnalyses, mp.match.speedRatio);
         printConversionQuality(q);
 
         sumScore  += q.overallScore;
