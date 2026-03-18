@@ -31,19 +31,37 @@ Tape2PPI/
 │   ├── dataset_exporter.h / .cpp      # Export paires de blocs pour entraînement ML (Phase 8)
 │   └── main.cpp                      # Point d'entrée (modes 1 fichier / 2 fichiers / batch / export)
 ├── export/
-│   ├── tape_to_ppi_converter.h       # Export émulateur — convertisseur causal (Phase 7 ✅)
-│   └── tape_to_ppi_converter.cpp     # Implémentation sans dépendance externe
+│   ├── tape_to_ppi_converter.h       # Export émulateur — convertisseur causal algorithmique (Phase 7 ✅)
+│   ├── tape_to_ppi_converter.cpp
+│   ├── tcn_tape_to_ppi.h             # Export émulateur — convertisseur TCN (Phase 9 ✅)
+│   ├── tcn_tape_to_ppi.cpp           # Inférence C++ pure, zéro dépendance externe
+│   └── tcn_weights.h                 # Poids embarqués (auto-généré par export_weights.py)
+├── tests/
+│   └── test_tcn_inference.cpp        # Tests d'inférence TCN C++ (14/14 PASS)
+├── train.py                          # Entraînement TCN PyTorch (Phase 9 ✅)
+├── export_weights.py                 # Export poids → tcn_weights.h (intégré au CMake)
+├── ml_env/
+│   └── cpc_model.pt                  # Modèle entraîné (9 441 paramètres)
 ├── test/
 │   ├── 10th_Frame__RERELEASE_KIXX.wav      # PPI, 44100 Hz, 8 bits
 │   ├── k7 - 10th frames (US Gold - 1986).wav  # PPI, 44100 Hz, 8 bits
 │   ├── k7 - Mach 3 (Loriciel - 1987).wav   # PPI, 44100 Hz, 8 bits
-│   └── Mach 3 16ST.wav                      # CASSETTE, 48000 Hz, 16 bits stéréo
+│   ├── Mach 3 16ST.wav                      # CASSETTE, 48000 Hz, 16 bits stéréo
+│   └── Mach 3 16ST_PPI.wav                  # PPI correspondant (= k7 - Mach 3 renommé)
 ├── elec.bmp                              # Schéma du circuit de lecture cassette CPC
 ├── CONTEXT.md
 └── CMakeLists.txt
 ```
 
-### Compilation
+### Compilation (CMake — recommandé)
+```bash
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+# Génère : build/cpc_wav_analyzer, build/test_tcn_inference, build/libtape_to_ppi.a
+# tcn_weights.h est auto-régénéré si ml_env/cpc_model.pt est plus récent
+```
+
+### Compilation manuelle (analyseur seul)
 ```bash
 g++ -std=c++17 -O2 -Isrc \
   src/main.cpp src/wav_reader.cpp src/source_detector.cpp \
@@ -60,6 +78,17 @@ g++ -std=c++17 -O2 -Isrc \
 ./cpc_wav_analyzer --batch répertoire/       # traitement batch
 ./cpc_wav_analyzer --export-dataset src/ out/ # export paires de blocs (dataset ML)
 ```
+
+### Intégration émulateur (libtape_to_ppi)
+```cpp
+#include "tcn_tape_to_ppi.h"          // convertisseur TCN
+#include "tape_to_ppi_converter.h"    // convertisseur algorithmique (Schmitt trigger HW)
+
+TcnTapeToPPI conv;
+conv.Filtrer(samples);  // in-place, vector<double> [-1.0,+1.0] → [-1.0,+1.0]
+```
+Lier avec `-Iexport export/tcn_tape_to_ppi.cpp export/tape_to_ppi_converter.cpp`
+(ou via `target_link_libraries(... tape_to_ppi)` avec CMake).
 
 ---
 
@@ -136,6 +165,27 @@ g++ -std=c++17 -O2 -Isrc \
     speed ratio, durée, fréquence pilote, fichiers source, indices de blocs)
   - Objectif : constituer un dataset pour entraîner un modèle TCN de conversion cassette→PPI
   - Estimation : 50–100 paires de fichiers → ~300–600 paires de blocs (avant augmentation)
+
+### Phase 9 — Modèle TCN + export C++ ✅
+- **Entraînement** (`train.py`) :
+  - Modèle : TCN léger 9 441 paramètres (3× Conv1d 1→16→32→16, k=9 + Linear 16→1)
+  - Cible : Schmitt trigger adaptatif C++ (signal_converter) — supervision directe par PPI réel
+    impossible (précision sub-sample requise < T/10 ≈ 1.7 samples, incompatible avec speed_ratio global)
+  - Dataset : 32 blocs train (22 Standard ROM 3D Grand Prix + 4 Speedlock Mach 3) / 6 blocs test
+  - Résultats : **99.79% accuracy test** après 30 époques (~15 min CPU)
+  - Modèle sauvegardé : `ml_env/cpc_model.pt`
+- **Export poids** (`export_weights.py`) :
+  - Génère `export/tcn_weights.h` (poids embarqués, ~37 KB)
+  - Intégré au CMake : régénération automatique si `cpc_model.pt` est modifié
+- **Inférence C++** (`export/tcn_tape_to_ppi.h/.cpp`) :
+  - Classe `TcnTapeToPPI`, interface batch in-place : `void Filtrer(std::vector<double>&)`
+  - Entrée : signal cassette normalisé [-1.0, +1.0]
+  - Sortie : signal PPI bipolaire (-1.0 / +1.0), in-place
+  - Aucune dépendance externe (C++11, `<vector>` uniquement)
+  - Précision vs Schmitt trigger C++ : **99.5–99.9%** selon le bloc
+- **Tests** (`tests/test_tcn_inference.cpp`) :
+  - 14/14 tests passés : bipolaire, duty cycle, précision vs Schmitt ≥ 98%
+  - Blocs testés : Mach 3 Speedlock (48 kHz) + 3D Grand Prix Standard ROM (44,1 kHz)
 
 ---
 

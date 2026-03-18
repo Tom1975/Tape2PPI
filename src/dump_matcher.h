@@ -47,10 +47,13 @@ struct DumpMatch {
 };
 
 // Apparie les blocs de deux dumps et calcule le ratio de vitesse.
+// skipProtectionCheck : ignorer le garde de protection incompatible
+//   (utile quand la paire est déjà connue, ex. appariement par nom de fichier).
 DumpMatch matchDumps(
     const std::vector<Block>&         blocks1,
     const std::vector<BlockAnalysis>& analyses1,
     const ProtectionAnalysis&         prot1,
     const std::vector<Block>&         blocks2,
     const std::vector<BlockAnalysis>& analyses2,
-    const ProtectionAnalysis&         prot2);
+    const ProtectionAnalysis&         prot2,
+    bool                              skipProtectionCheck = false);

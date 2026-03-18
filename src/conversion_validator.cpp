@@ -56,14 +56,21 @@ ConversionQuality validateConversion(
             score += 0.30;
 
             // Erreur fréquence pilote (0.25 pts)
-            bq.pilotFreqErr = std::fabs(conv.pilotFreqHz - ref.pilotFreqHz) / ref.pilotFreqHz * 100.0;
+            // Le signal converti garde la cadence de la cassette :
+            //   fréquence attendue = ref_ppi_freq × speedRatio
+            {
+                const double expectedFreq = ref.pilotFreqHz * speedRatio;
+                bq.pilotFreqErr = std::fabs(conv.pilotFreqHz - expectedFreq) / expectedFreq * 100.0;
+            }
             if      (bq.pilotFreqErr < 2.0)  score += 0.25;
             else if (bq.pilotFreqErr < 5.0)  score += 0.18;
             else if (bq.pilotFreqErr < 10.0) score += 0.10;
 
-            // Erreur durée pilote (0.10 pts — moins critique, dépend du speedRatio)
+            // Erreur durée pilote (0.10 pts)
+            // Durée attendue dans le converti = ref_ppi_dur / speedRatio
             if (ref.pilotDurSec > 0.0) {
-                bq.pilotDurErr = std::fabs(conv.pilotDurSec - ref.pilotDurSec) / ref.pilotDurSec * 100.0;
+                const double expectedDur = ref.pilotDurSec / speedRatio;
+                bq.pilotDurErr = std::fabs(conv.pilotDurSec - expectedDur) / expectedDur * 100.0;
                 if      (bq.pilotDurErr < 5.0)  score += 0.10;
                 else if (bq.pilotDurErr < 15.0) score += 0.05;
             }

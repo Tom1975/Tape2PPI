@@ -351,12 +351,12 @@ BlockAnalysis analyzeBlock(const WavReader& reader, const Block& block) {
     result.longHP        = enc.longHP;
     const double thr     = (enc.shortHP + enc.longHP) / 2.0;
 
-    // Cherche 0x16 sur les 32 premiers alignements possibles × 4 combinaisons.
+    // Cherche 0x16 sur les 64 premiers alignements possibles × 4 combinaisons.
     // On scanne depuis pilotEnd (sans skip) pour couvrir :
     //   - aucun sync pulse  : 0x16 démarre à pilotEnd
     //   - 1 intervalle sync : 0x16 démarre à pilotEnd+1
     //   - 1 bit sync complet: 0x16 démarre à pilotEnd+2
-    for (size_t off = pilotEnd; off <= pilotEnd + 32 && !result.firstByteValid; ++off) {
+    for (size_t off = pilotEnd; off <= pilotEnd + 64 && !result.firstByteValid; ++off) {
         for (bool shortIsZero : {true, false}) {
             for (bool msbFirst : {true, false}) {
                 if (tryDecodeByte(iv, off, thr, shortIsZero, msbFirst) == 0x16) {
@@ -365,6 +365,23 @@ BlockAnalysis analyzeBlock(const WavReader& reader, const Block& block) {
                 }
             }
         }
+    }
+
+    // Si 0x16 non trouvé, enregistrer le premier octet cohérent (toutes paires valides)
+    // pour diagnostic — utile pour les loaders avec un sync byte non-standard.
+    if (!result.firstByteValid) {
+        for (size_t off = pilotEnd; off <= pilotEnd + 64; ++off) {
+            for (bool shortIsZero : {true, false}) {
+                for (bool msbFirst : {true, false}) {
+                    const int b = tryDecodeByte(iv, off, thr, shortIsZero, msbFirst);
+                    if (b >= 0) {
+                        result.firstByte = static_cast<uint8_t>(b);
+                        goto firstByteFound;
+                    }
+                }
+            }
+        }
+        firstByteFound:;
     }
 
     return result;

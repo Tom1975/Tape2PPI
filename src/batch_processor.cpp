@@ -122,24 +122,64 @@ void runBatch(const std::string& directory)
         return;
     }
 
-    // --- 4. Appariement toutes paires cassette × PPI ---
+    // --- 4. Appariement : priorité au suffixe "_PPI", fallback structurel ---
     struct MatchedPair {
         BatchEntry* cas;
         BatchEntry* ppi;
         DumpMatch   match;
+        bool        byName; // apparié par nom (vs structurel)
     };
     std::vector<MatchedPair> matched;
 
-    for (BatchEntry* cas : cassettes) {
-        for (BatchEntry* ppi : ppis) {
-            const DumpMatch m = matchDumps(
-                cas->seg.blocks, cas->analyses, cas->protection,
-                ppi->seg.blocks, ppi->analyses, ppi->protection);
-            if (m.result != DumpMatch::Result::FAILED) {
-                printf("  MATCH  %s\n         ↔ %s\n         confiance=%.0f%%  ratio=×%.4f\n\n",
-                       cas->filepath.c_str(), ppi->filepath.c_str(),
+    // Helper : base name sans extension
+    auto baseName = [](const std::string& path) -> std::string {
+        const fs::path p(path);
+        std::string stem = p.stem().string(); // nom sans extension
+        return stem;
+    };
+
+    std::vector<bool> ppiUsed(ppis.size(), false);
+    std::vector<bool> casUsed(cassettes.size(), false);
+
+    // Appariement par nom : cassette "X.wav" ↔ PPI "X_PPI.wav"
+    for (size_t ci = 0; ci < cassettes.size(); ++ci) {
+        const std::string casBase = baseName(cassettes[ci]->filepath);
+        const std::string expectedPpiBase = casBase + "_PPI";
+        for (size_t pi = 0; pi < ppis.size(); ++pi) {
+            if (ppiUsed[pi]) continue;
+            if (baseName(ppis[pi]->filepath) == expectedPpiBase) {
+                const DumpMatch m = matchDumps(
+                    cassettes[ci]->seg.blocks, cassettes[ci]->analyses, cassettes[ci]->protection,
+                    ppis[pi]->seg.blocks,      ppis[pi]->analyses,      ppis[pi]->protection,
+                    /*skipProtectionCheck=*/true);
+                printf("  MATCH (nom)  %s\n               ↔ %s\n               confiance=%.0f%%  ratio=×%.4f\n\n",
+                       cassettes[ci]->filepath.c_str(), ppis[pi]->filepath.c_str(),
                        m.confidence * 100.0, m.speedRatio);
-                matched.push_back({cas, ppi, m});
+                matched.push_back({cassettes[ci], ppis[pi], m, true});
+                casUsed[ci] = true;
+                ppiUsed[pi] = true;
+                break;
+            }
+        }
+    }
+
+    // Fallback structurel pour les fichiers non appariés par nom
+    // (uniquement si le speed ratio est dans un intervalle raisonnable)
+    for (size_t ci = 0; ci < cassettes.size(); ++ci) {
+        if (casUsed[ci]) continue;
+        for (size_t pi = 0; pi < ppis.size(); ++pi) {
+            if (ppiUsed[pi]) continue;
+            const DumpMatch m = matchDumps(
+                cassettes[ci]->seg.blocks, cassettes[ci]->analyses, cassettes[ci]->protection,
+                ppis[pi]->seg.blocks,      ppis[pi]->analyses,      ppis[pi]->protection);
+            if (m.result != DumpMatch::Result::FAILED &&
+                m.speedRatio >= 0.5 && m.speedRatio <= 2.0) {
+                printf("  MATCH (struct)  %s\n                  ↔ %s\n                  confiance=%.0f%%  ratio=×%.4f\n\n",
+                       cassettes[ci]->filepath.c_str(), ppis[pi]->filepath.c_str(),
+                       m.confidence * 100.0, m.speedRatio);
+                matched.push_back({cassettes[ci], ppis[pi], m, false});
+                casUsed[ci] = true;
+                ppiUsed[pi] = true;
             }
         }
     }

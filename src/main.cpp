@@ -81,6 +81,8 @@ static void printDump(const DumpInfo& d) {
                     printf("         Sync   : pulse détecté\n");
                 if (ba.firstByteValid)
                     printf("         Octet1 : 0x%02X ✓\n", ba.firstByte);
+                else if (ba.firstByte != 0)
+                    printf("         Octet1 : 0x%02X (≠ 0x16)\n", ba.firstByte);
                 else
                     printf("         Octet1 : non décodé\n");
                 printf("         Données: à partir de %.3f s\n", ba.dataStartSec);
