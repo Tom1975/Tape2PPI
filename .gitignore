@@ -11,6 +11,8 @@ build/
 
 # Fichiers WAV générés (conversions)
 converted/
+test/*_to_PPI.wav
+test/*_to_cassette.wav
 
 # Dataset ML exporté
 out_dataset/

@@ -44,10 +44,14 @@ Tape2PPI/
 ├── ml_env/
 │   └── cpc_model.pt                  # Modèle entraîné (9 441 paramètres)
 ├── test/                             # Fichiers WAV de test (gérés par Git LFS)
+│   ├── 10th_Frame.wav                      # CASSETTE, 44100 Hz, 16 bits
+│   ├── 10th_Frame_PPI.wav                  # PPI correspondant
 │   ├── 3D Grand Prix Face A 16M.wav        # CASSETTE, 44100 Hz, 16 bits
 │   ├── 3D Grand Prix Face A 16M_PPI.wav    # PPI correspondant
 │   ├── 3d boxing (Amsoft - 1985).wav       # CASSETTE, 44100 Hz
 │   ├── 3d boxing (Amsoft - 1985)_PPI.wav  # PPI correspondant
+│   ├── BB6BCSW.WAV                         # PPI correspondant (Big Box Face 6B)
+│   ├── Big Box Face 6B 16ST.wav            # CASSETTE, 48000 Hz, 16 bits stéréo
 │   ├── Bomb Jack Face A 16M.wav            # CASSETTE, 44100 Hz, 16 bits
 │   ├── Bomb Jack.wav                       # PPI correspondant
 │   ├── Bride of Frankenstein Face A 16M.wav # CASSETTE, 44100 Hz, 16 bits
@@ -59,6 +63,7 @@ Tape2PPI/
 │   ├── Combat School - Levels.wav          # PPI
 │   ├── Combat School Demo.wav              # PPI
 │   ├── Combat School Face A 16M.wav        # CASSETTE, 44100 Hz, 16 bits
+│   ├── Combat School Face B 16M.wav        # CASSETTE, 44100 Hz, 16 bits (Face B)
 │   ├── Combat School.wav                   # PPI correspondant
 │   ├── Dan Dare Face A 16M.wav             # CASSETTE, 44100 Hz, 16 bits
 │   ├── Dan Dare.wav                        # PPI correspondant
@@ -78,10 +83,39 @@ Tape2PPI/
 │   ├── Golf.wav                            # PPI (non apparié — nom trop différent)
 │   ├── Green Beret Face A 16M.wav          # CASSETTE, 44100 Hz, 16 bits
 │   ├── Green Beret.wav                     # PPI correspondant
+│   ├── Gryzor 16M image + bloc 1 + bloc 2 data ok.wav  # rôle à déterminer (PPI Gryzor ?)
 │   ├── Gryzor Face B 16M.wav               # CASSETTE, 44100 Hz, 16 bits
 │   ├── Gryzor.wav                          # PPI (non apparié — Face B, à vérifier)
+│   ├── Highlander - Part 1.wav             # PPI (partie 1)
+│   ├── Highlander - Part 2.wav             # PPI (partie 2)
+│   ├── Highlander - Part 3.wav             # PPI (partie 3)
+│   ├── Highlander Face A 16M.wav           # CASSETTE, 44100 Hz, 16 bits
 │   ├── Mach 3 16ST.wav                     # CASSETTE, 48000 Hz, 16 bits stéréo
-│   └── Mach 3 16ST_PPI.wav                 # PPI correspondant
+│   ├── Mach 3 16ST_PPI.wav                 # PPI correspondant
+│   ├── Manic Miner 16M.wav                 # rôle à déterminer (cassette alternative ?)
+│   ├── Manic Miner Face A 16M.wav          # CASSETTE, 44100 Hz, 16 bits
+│   ├── Manic Miner.wav                     # PPI correspondant
+│   ├── Oh Mummy Face A 16M.wav             # CASSETTE, 44100 Hz, 16 bits
+│   ├── Oh Mummy.wav                        # PPI correspondant
+│   ├── Revolution Face A 16M.wav           # CASSETTE, 44100 Hz, 16 bits
+│   ├── Revolution.wav                      # PPI correspondant
+│   ├── Roland In Caves.wav                 # PPI correspondant
+│   ├── Roland On The Ropes 16M.wav         # CASSETTE, 44100 Hz, 16 bits
+│   ├── Roland in the Caves Face A 16M.wav  # CASSETTE, 44100 Hz, 16 bits
+│   ├── Roland on the ropes.wav             # PPI correspondant
+│   ├── Silent Service Face A 16M.wav       # CASSETTE, 44100 Hz, 16 bits
+│   ├── Silent Service.wav                  # PPI correspondant
+│   ├── Sorcery Face A 16M.wav              # CASSETTE, 44100 Hz, 16 bits
+│   ├── Sorcery Face B 16M.wav              # CASSETTE, 44100 Hz, 16 bits (Face B)
+│   ├── Sorcery.wav                         # PPI correspondant
+│   ├── Soul of a Robot Face A 16M.wav      # CASSETTE, 44100 Hz, 16 bits
+│   ├── Soul of a robot.wav                 # PPI correspondant
+│   ├── Sultan Maze.wav                     # PPI correspondant
+│   ├── Sultan's Maze Face A 16M.wav        # CASSETTE, 44100 Hz, 16 bits
+│   ├── Timeman One Face A 16M.wav          # CASSETTE, 44100 Hz, 16 bits
+│   ├── Timeman One.wav                     # PPI correspondant
+│   ├── Yie Ar Kung-Fu Face A 16M.wav       # CASSETTE, 44100 Hz, 16 bits
+│   └── Yie ar Kung Fu.wav                  # PPI correspondant
 ├── converted/                        # Fichiers WAV générés (gitignored)
 ├── out_dataset/                      # Dataset ML exporté (gitignored)
 ├── elec.bmp                          # Schéma du circuit de lecture cassette CPC
