@@ -20,6 +20,40 @@ namespace fs = std::filesystem;
 //  Helpers
 // ============================================================
 
+static std::string toLower(const std::string& s) {
+    std::string r = s;
+    for (char& c : r) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return r;
+}
+
+static std::string normalizeName(const std::string& s) {
+    std::string r;
+    for (unsigned char c : s) {
+        if (std::isalnum(c) || c == ' ') r += static_cast<char>(std::tolower(c));
+        else if (c == '-')               r += ' ';
+    }
+    return r;
+}
+
+static std::string stripCassetteSuffix(const std::string& stem) {
+    size_t pos = stem.rfind(" Face ");
+    if (pos != std::string::npos) {
+        const std::string rest = stem.substr(pos + 6);
+        if (rest.size() >= 4 && rest[1] == ' ') {
+            const std::string tail = rest.substr(2);
+            if (tail == "16M" || tail == "16ST")
+                return stem.substr(0, pos);
+        }
+    }
+    for (const char* sfx : {" 16ST", " 16M"}) {
+        const std::string s(sfx);
+        if (stem.size() >= s.size() && stem.compare(stem.size() - s.size(), s.size(), s) == 0)
+            return stem.substr(0, stem.size() - s.size());
+    }
+    return stem;
+}
+
+
 static bool isGeneratedFile(const std::string& name) {
     static const char* suffixes[] = {
         "_to_PPI.wav", "_to_cassette.wav",
@@ -184,6 +218,39 @@ void exportDataset(const std::string& inputDir, const std::string& outputDir)
                     cassettes[ci]->seg.blocks, cassettes[ci]->analyses, cassettes[ci]->protection,
                     ppis[pi]->seg.blocks,      ppis[pi]->analyses,      ppis[pi]->protection,
                     /*skipProtectionCheck=*/true);
+                printf("  MATCH (nom)  %s\n"
+                       "               ↔ %s\n"
+                       "               confiance=%.0f%%  ratio=×%.4f  %d blocs appariés\n\n",
+                       cassettes[ci]->filepath.c_str(), ppis[pi]->filepath.c_str(),
+                       m.confidence * 100.0, m.speedRatio, m.matchedPairs);
+                matched.push_back({cassettes[ci], ppis[pi], m});
+                casUsed[ci] = ppiUsed[pi] = true;
+                break;
+            }
+        }
+    }
+
+    // Appariement par nom étendu : cassette "X Face A 16M.wav" ↔ PPI "X.wav"
+    // Normalisation : minuscules + ponctuation ignorée (apostrophes, tirets, etc.)
+    for (size_t ci = 0; ci < cassettes.size(); ++ci) {
+        if (casUsed[ci]) continue;
+        const std::string casBase     = baseStem(cassettes[ci]->filepath);
+        const std::string casStripped = stripCassetteSuffix(casBase);
+        if (normalizeName(casStripped) == normalizeName(casBase)) continue;
+        const std::string casNorm = normalizeName(casStripped);
+        for (size_t pi = 0; pi < ppis.size(); ++pi) {
+            if (ppiUsed[pi]) continue;
+            if (normalizeName(baseStem(ppis[pi]->filepath)) == casNorm) {
+                const DumpMatch m = matchDumps(
+                    cassettes[ci]->seg.blocks, cassettes[ci]->analyses, cassettes[ci]->protection,
+                    ppis[pi]->seg.blocks,      ppis[pi]->analyses,      ppis[pi]->protection,
+                    /*skipProtectionCheck=*/true);
+                if (m.speedRatio < 0.5 || m.speedRatio > 2.0) {
+                    printf("  SKIP (ratio aberrant ×%.2f)  %s ↔ %s\n\n",
+                           m.speedRatio,
+                           cassettes[ci]->filepath.c_str(), ppis[pi]->filepath.c_str());
+                    break;
+                }
                 printf("  MATCH (nom)  %s\n"
                        "               ↔ %s\n"
                        "               confiance=%.0f%%  ratio=×%.4f  %d blocs appariés\n\n",

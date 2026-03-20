@@ -2,7 +2,7 @@
 """
 TCN : conversion cassette -> PPI
 Cible : Schmitt trigger adaptatif (identique au signal_converter C++).
-Entraîné sur Standard ROM (3D Grand Prix) + Speedlock (Mach 3) pour la diversité.
+Entraîné sur Standard ROM + Speedlock + autres protections pour la diversité.
 Évaluation qualité : validateur C++ (intervalles en µs), pas sample-level vs PPI réel
   car la comparaison sample-level requiert une précision < T/10 ≈ 1.7 samples,
   impossible avec un rééchantillonnage global (speed_ratio médian, pas par bloc).
@@ -25,12 +25,24 @@ BATCH_SIZE  = 1024
 EPOCHS      = 30
 LR          = 1e-3
 
-# Blocs utilisables : Standard ROM (ratio ×0.54) + Speedlock Mach 3 (ratio ×1.02)
-# Exclure 3D Boxing (ratio ×1.05, loader 0xEB non-standard)
-USABLE_SOURCES = {'Standard ROM', 'Speedlock (ou compatible)'}
-
-N_TRAIN_STD  = 22   # blocs Standard ROM pour l'entraînement (26 total)
-N_TRAIN_SPD  = 4    # blocs Speedlock pour l'entraînement (6 total)
+# Split par jeu (fichier source cassette)
+# Train : ensemble diversifié (Speedlock, Standard ROM, loaders custom, multi-fréquences)
+# Test  : 4 jeux non vus, couvrant Standard ROM + Speedlock + loaders intermédiaires
+TRAIN_SOURCES = {
+    'Mach 3 16ST.wav',                        # Speedlock 1378 Hz
+    'Bomb Jack Face A 16M.wav',               # Standard ROM 735 Hz
+    'Bride of Frankenstein Face A 16M.wav',   # loader custom 1470 Hz
+    'Bridge-It Face A 16M.wav',               # Standard ROM 735 Hz
+    'City Slicker Face A 16M.wav',            # Standard ROM 760/848 Hz
+    '3D Grand Prix Face A 16M.wav',           # Standard ROM 735 Hz
+    '3d boxing (Amsoft - 1985).wav',          # Standard ROM 735 Hz
+}
+TEST_SOURCES = {
+    'Dan Dare Face A 16M.wav',                # Speedlock+custom 735/1297 Hz
+    'Desert Fox Face A 16M.wav',             # Standard ROM 711/735 Hz
+    "Dragon's Lair Face B 16M.wav",           # Speedlock 1102 Hz
+    'Combat School Face A 16M.wav',           # Standard ROM 735/760 Hz
+}
 
 # ============================================================
 # Audio
@@ -131,14 +143,15 @@ if __name__ == '__main__':
     with open(os.path.join(DATASET_DIR, 'dataset.json')) as f:
         meta = json.load(f)
 
-    std_blocks = [b for b in meta['blocks'] if b['protection'] == 'Standard ROM']
-    spd_blocks = [b for b in meta['blocks'] if b['protection'] == 'Speedlock (ou compatible)']
+    from collections import Counter
+    all_blocks   = meta['blocks']
+    src_counts   = Counter(b['source_cassette'] for b in all_blocks)
+    print("Dataset :")
+    for src, cnt in sorted(src_counts.items()):
+        print(f"  {cnt:3d} blocs  {src}")
 
-    print(f"Blocs Standard ROM  : {len(std_blocks)}  (source : 3D Grand Prix)")
-    print(f"Blocs Speedlock     : {len(spd_blocks)}  (source : Mach 3)")
-
-    train_blocks = std_blocks[:N_TRAIN_STD] + spd_blocks[:N_TRAIN_SPD]
-    test_blocks  = std_blocks[N_TRAIN_STD:] + spd_blocks[N_TRAIN_SPD:]
+    train_blocks = [b for b in all_blocks if b['source_cassette'] in TRAIN_SOURCES]
+    test_blocks  = [b for b in all_blocks if b['source_cassette'] in TEST_SOURCES]
     print(f"\nTrain : {len(train_blocks)} blocs  /  Test : {len(test_blocks)} blocs\n")
 
     print("Chargement train...", flush=True)

@@ -140,9 +140,9 @@ DetectionResult detectSource(const WavReader& reader) {
 
     if (result.spikeRatio > SPIKE_RATIO_PPI && result.avgSpikeWidth < AVG_WIDTH_PPI)
         result.source = SourceType::PPI;
-    else if (result.edgeCount > 0)
+    else if (result.activeCount > 0)
         result.source = SourceType::CASSETTE;
-    // sinon : signal actif mais sans transitions → UNKNOWN
+    // sinon : aucun sample actif → UNKNOWN
 
     return result;
 }

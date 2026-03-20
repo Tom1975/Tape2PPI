@@ -9,5 +9,11 @@ build/
 *.suo
 .vs/
 
+# Fichiers WAV générés (conversions)
+converted/
+
+# Dataset ML exporté
+out_dataset/
+
 # Mémoire Claude (usage local)
 .claude/

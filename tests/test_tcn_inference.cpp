@@ -148,21 +148,21 @@ int main(int argc, char** argv)
 
     test_silence();
 
-    // Bloc 0030 : Mach 3, Speedlock, PILOT_DATA (2.36 s @ 48000 Hz)
-    test_block("Mach 3 pilote   (bloc 0030, Speedlock)",
+    // Bloc 0000 : 3D Grand Prix, Standard ROM, PILOT_DATA (22.5 s @ 44100 Hz)
+    test_block("3D Grand Prix   (bloc 0000, Standard ROM 44.1 kHz)",
+               dir + "/block_0000_cassette.wav");
+
+    // Bloc 0010 : 3D Grand Prix, Standard ROM, PILOT_DATA (23.3 s @ 44100 Hz)
+    test_block("3D Grand Prix   (bloc 0010, Standard ROM 44.1 kHz)",
+               dir + "/block_0010_cassette.wav");
+
+    // Bloc 0030 : Mach 3, Speedlock, PILOT_DATA (2.4 s @ 48000 Hz)
+    test_block("Mach 3 pilote   (bloc 0030, Speedlock 48 kHz)",
                dir + "/block_0030_cassette.wav");
 
     // Bloc 0031 : Mach 3, Speedlock, PILOT_DATA (8.9 s @ 48000 Hz)
-    test_block("Mach 3 pilote   (bloc 0031, Speedlock)",
+    test_block("Mach 3 data     (bloc 0031, Speedlock 48 kHz)",
                dir + "/block_0031_cassette.wav");
-
-    // Bloc 0000 : 3D Grand Prix, Standard ROM, PILOT_DATA (22.5 s @ 44100 Hz)
-    test_block("3D Grand Prix   (bloc 0000, Standard ROM)",
-               dir + "/block_0000_cassette.wav");
-
-    // Bloc 0010 : 3D Grand Prix, Standard ROM, PILOT_DATA
-    test_block("3D Grand Prix   (bloc 0010, Standard ROM)",
-               dir + "/block_0010_cassette.wav");
 
     printf("\n============================================================\n");
     printf("  Résultat : %d/%d tests passés\n", g_pass, g_pass + g_fail);

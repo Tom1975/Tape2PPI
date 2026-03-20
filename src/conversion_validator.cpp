@@ -4,6 +4,11 @@
 #include <cmath>
 #include <cstdio>
 
+static const BlockAnalysis* findBlockByIndex(const std::vector<BlockAnalysis>& v, int idx) {
+    for (const auto& a : v) if (a.blockIndex == idx) return &a;
+    return nullptr;
+}
+
 // ============================================================
 //  validateConversion
 // ============================================================
@@ -11,15 +16,32 @@
 ConversionQuality validateConversion(
     const std::vector<BlockAnalysis>& refAnalyses,
     const std::vector<BlockAnalysis>& convAnalyses,
-    double speedRatio)
+    double speedRatio,
+    const std::vector<BlockPair>& pairs)
 {
     ConversionQuality q;
 
-    const int n = static_cast<int>(std::min(refAnalyses.size(), convAnalyses.size()));
+    // Construire la liste des paires (ref, conv) à comparer.
+    // Si des pairs sont fournies, on utilise le mapping idx1(cassette)↔idx2(PPI).
+    // Sinon, appariement séquentiel.
+    struct RefConvPair { const BlockAnalysis* ref; const BlockAnalysis* conv; };
+    std::vector<RefConvPair> toCompare;
 
-    for (int i = 0; i < n; ++i) {
-        const BlockAnalysis& ref  = refAnalyses[i];
-        const BlockAnalysis& conv = convAnalyses[i];
+    if (!pairs.empty()) {
+        for (const auto& bp : pairs) {
+            const BlockAnalysis* ref  = findBlockByIndex(refAnalyses,  bp.idx2);
+            const BlockAnalysis* conv = findBlockByIndex(convAnalyses, bp.idx1);
+            if (ref && conv) toCompare.push_back({ref, conv});
+        }
+    } else {
+        const int n = static_cast<int>(std::min(refAnalyses.size(), convAnalyses.size()));
+        for (int i = 0; i < n; ++i)
+            toCompare.push_back({&refAnalyses[i], &convAnalyses[i]});
+    }
+
+    for (const auto& rc : toCompare) {
+        const BlockAnalysis& ref  = *rc.ref;
+        const BlockAnalysis& conv = *rc.conv;
 
         BlockConversionQuality bq;
         bq.blockIndex = ref.blockIndex;

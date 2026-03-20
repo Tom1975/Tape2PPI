@@ -18,6 +18,55 @@
 
 namespace fs = std::filesystem;
 
+static std::string convertedPath(const std::string& inputPath, const std::string& suffix) {
+    fs::create_directories("converted");
+    return "converted/" + fs::path(inputPath).stem().string() + suffix + ".wav";
+}
+
+// ============================================================
+//  Helpers : appariement par nom
+// ============================================================
+
+static std::string toLower(const std::string& s) {
+    std::string r = s;
+    for (char& c : r) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    return r;
+}
+
+// Normalise un nom pour comparaison : minuscules + suppression de la ponctuation
+// Ex : "Dragon's Lair" → "dragons lair"   "3d-boxing" → "3d boxing"
+static std::string normalizeName(const std::string& s) {
+    std::string r;
+    for (unsigned char c : s) {
+        if (std::isalnum(c) || c == ' ') r += static_cast<char>(std::tolower(c));
+        else if (c == '-')               r += ' ';
+        // apostrophes, points, etc. → supprimés
+    }
+    return r;
+}
+
+// Supprime les suffixes cassette typiques : " Face X 16M", " Face X 16ST", " 16M", " 16ST"
+// Ex : "Game Face A 16M" → "Game"   /   "Game 16ST" → "Game"
+static std::string stripCassetteSuffix(const std::string& stem) {
+    // " Face X 16M" ou " Face X 16ST"
+    size_t pos = stem.rfind(" Face ");
+    if (pos != std::string::npos) {
+        const std::string rest = stem.substr(pos + 6); // après " Face "
+        if (rest.size() >= 4 && rest[1] == ' ') {
+            const std::string tail = rest.substr(2);
+            if (tail == "16M" || tail == "16ST")
+                return stem.substr(0, pos);
+        }
+    }
+    // " 16ST" ou " 16M"
+    for (const char* sfx : {" 16ST", " 16M"}) {
+        const std::string s(sfx);
+        if (stem.size() >= s.size() && stem.compare(stem.size() - s.size(), s.size(), s) == 0)
+            return stem.substr(0, stem.size() - s.size());
+    }
+    return stem;
+}
+
 // ============================================================
 //  Structure interne : analyse complète d'un fichier
 // ============================================================
@@ -163,6 +212,39 @@ void runBatch(const std::string& directory)
         }
     }
 
+    // Appariement par nom étendu : cassette "X Face A 16M.wav" ↔ PPI "X.wav"
+    // Comparaison normalisée : minuscules + ponctuation ignorée
+    // Ex : "Dragon's Lair Face B 16M" → "dragons lair" == "dragons lair" (Dragons lair.wav)
+    for (size_t ci = 0; ci < cassettes.size(); ++ci) {
+        if (casUsed[ci]) continue;
+        const std::string casBase     = baseName(cassettes[ci]->filepath);
+        const std::string casStripped = stripCassetteSuffix(casBase);
+        if (normalizeName(casStripped) == normalizeName(casBase)) continue; // aucun suffixe supprimé
+        const std::string casNorm = normalizeName(casStripped);
+        for (size_t pi = 0; pi < ppis.size(); ++pi) {
+            if (ppiUsed[pi]) continue;
+            if (normalizeName(baseName(ppis[pi]->filepath)) == casNorm) {
+                const DumpMatch m = matchDumps(
+                    cassettes[ci]->seg.blocks, cassettes[ci]->analyses, cassettes[ci]->protection,
+                    ppis[pi]->seg.blocks,      ppis[pi]->analyses,      ppis[pi]->protection,
+                    /*skipProtectionCheck=*/true);
+                if (m.speedRatio < 0.5 || m.speedRatio > 2.0) {
+                    printf("  SKIP (ratio aberrant ×%.2f)  %s ↔ %s\n\n",
+                           m.speedRatio,
+                           cassettes[ci]->filepath.c_str(), ppis[pi]->filepath.c_str());
+                    break;
+                }
+                printf("  MATCH (nom)  %s\n               ↔ %s\n               confiance=%.0f%%  ratio=×%.4f\n\n",
+                       cassettes[ci]->filepath.c_str(), ppis[pi]->filepath.c_str(),
+                       m.confidence * 100.0, m.speedRatio);
+                matched.push_back({cassettes[ci], ppis[pi], m, true});
+                casUsed[ci] = true;
+                ppiUsed[pi] = true;
+                break;
+            }
+        }
+    }
+
     // Fallback structurel pour les fichiers non appariés par nom
     // (uniquement si le speed ratio est dans un intervalle raisonnable)
     for (size_t ci = 0; ci < cassettes.size(); ++ci) {
@@ -210,7 +292,7 @@ void runBatch(const std::string& directory)
             mp.cas->reader.info().sampleRate);
 
         // Écriture fichier converti
-        const std::string outPath = mp.cas->filepath + "_to_PPI.wav";
+        const std::string outPath = convertedPath(mp.cas->filepath, "_to_PPI");
         if (writeWav(outPath.c_str(), converted, mp.cas->reader.info().sampleRate))
             printf("  Écrit : %s\n", outPath.c_str());
         else
@@ -230,7 +312,7 @@ void runBatch(const std::string& directory)
             convAnalyses.push_back(analyzeBlock(convReader, b));
 
         // Validation : converti vs PPI de référence
-        const ConversionQuality q = validateConversion(mp.ppi->analyses, convAnalyses, mp.match.speedRatio);
+        const ConversionQuality q = validateConversion(mp.ppi->analyses, convAnalyses, mp.match.speedRatio, mp.match.pairs);
         printConversionQuality(q);
 
         sumScore  += q.overallScore;

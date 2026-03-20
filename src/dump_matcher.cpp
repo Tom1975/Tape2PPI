@@ -147,14 +147,18 @@ DumpMatch matchDumps(
             a.speedRatio = median(a.ratios);
             a.cv         = coeffVar(a.ratios);
 
-            // Préférer l'alignement avec le CV le plus bas ;
-            // en cas d'égalité, préférer celui qui saute le moins de blocs.
+            // Préférer l'alignement avec le CV le plus bas.
+            // En cas d'égalité de CV, préférer le plus grand nombre de paires
+            // (un alignement à 1 paire a cv=0 trivial mais est moins fiable).
+            // En dernier recours seulement, préférer le moins de skips.
             const int skipPenalty    = o1 + o2;
             const int bestSkip       = best.off1 + best.off2;
             const bool betterCV      = a.cv < best.cv - 0.01;
             const bool sameCV        = std::fabs(a.cv - best.cv) < 0.01;
+            const bool morePairs     = a.nPairs > best.nPairs;
+            const bool samePairs     = a.nPairs == best.nPairs;
             const bool fewerSkips    = skipPenalty < bestSkip;
-            if (betterCV || (sameCV && fewerSkips))
+            if (betterCV || (sameCV && morePairs) || (sameCV && samePairs && fewerSkips))
                 best = std::move(a);
         }
     }

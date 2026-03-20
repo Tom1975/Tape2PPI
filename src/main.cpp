@@ -1,7 +1,16 @@
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
 #include <vector>
 #include <string>
+
+namespace fs = std::filesystem;
+
+// Retourne "converted/<stem><suffix>.wav", crée le répertoire si besoin.
+static std::string convertedPath(const std::string& inputPath, const std::string& suffix) {
+    fs::create_directories("converted");
+    return "converted/" + fs::path(inputPath).stem().string() + suffix + ".wav";
+}
 #include "wav_reader.h"
 #include "source_detector.h"
 #include "signal_analyzer.h"
@@ -233,7 +242,7 @@ int main(int argc, char* argv[]) {
 
     // --- Cassette → PPI ---
     {
-        const std::string outPath = std::string(cassette.filepath) + "_to_PPI.wav";
+        const std::string outPath = convertedPath(cassette.filepath, "_to_PPI");
         printf("\n  [Cassette → PPI] : %s\n", outPath.c_str());
         const std::vector<float> result = convertToPPI(
             cassette.reader.samples(), cassette.reader.info().sampleRate);
@@ -254,14 +263,14 @@ int main(int argc, char* argv[]) {
                 convAnalyses.push_back(analyzeBlock(convReader, b));
 
             printf("\n");
-            const ConversionQuality q = validateConversion(ppi.analyses, convAnalyses, params.speedRatio);
+            const ConversionQuality q = validateConversion(ppi.analyses, convAnalyses, params.speedRatio, m.pairs);
             printConversionQuality(q);
         }
     }
 
     // --- PPI → Cassette ---
     {
-        const std::string outPath = std::string(ppi.filepath) + "_to_cassette.wav";
+        const std::string outPath = convertedPath(ppi.filepath, "_to_cassette");
         const double cutoff = params.pilotFreqHz * 3.0;
         printf("  [PPI → Cassette] : %s\n", outPath.c_str());
         const std::vector<float> result = convertToCassette(

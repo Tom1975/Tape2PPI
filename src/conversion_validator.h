@@ -1,6 +1,7 @@
 #pragma once
 
 #include "block_analyzer.h"
+#include "dump_matcher.h"
 #include "signal_analyzer.h"
 
 #include <string>
@@ -55,10 +56,13 @@ struct ConversionQuality {
 // speedRatio    : ratio de vitesse cassette/PPI (cassette ÷ speedRatio = PPI)
 //                 Permet de corriger la différence de sample rate + vitesse
 //                 avant de comparer S et L en µs absolus.
+// pairs         : mapping (idx1=cassette, idx2=PPI) issu de matchDumps.
+//                 Si vide, appariement séquentiel (comportement historique).
 ConversionQuality validateConversion(
     const std::vector<BlockAnalysis>& refAnalyses,
     const std::vector<BlockAnalysis>& convAnalyses,
-    double speedRatio = 1.0);
+    double speedRatio = 1.0,
+    const std::vector<BlockPair>& pairs = {});
 
 // Affiche le rapport de validation sur stdout.
 void printConversionQuality(const ConversionQuality& q);

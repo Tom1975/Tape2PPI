@@ -28,7 +28,7 @@ Tape2PPI/
 │   ├── conversion_validator.h / .cpp # Validation qualité conversion (Phase 7 ✅)
 │   ├── batch_processor.h / .cpp      # Traitement batch répertoire (Phase 7 ✅)
 │   ├── wav_writer.h / .cpp           # Écriture WAV PCM 16 bits (Phase 6 ✅)
-│   ├── dataset_exporter.h / .cpp      # Export paires de blocs pour entraînement ML (Phase 8)
+│   ├── dataset_exporter.h / .cpp     # Export paires de blocs pour entraînement ML (Phase 8 ✅)
 │   └── main.cpp                      # Point d'entrée (modes 1 fichier / 2 fichiers / batch / export)
 ├── export/
 │   ├── tape_to_ppi_converter.h       # Export émulateur — convertisseur causal algorithmique (Phase 7 ✅)
@@ -39,19 +39,61 @@ Tape2PPI/
 ├── tests/
 │   └── test_tcn_inference.cpp        # Tests d'inférence TCN C++ (14/14 PASS)
 ├── train.py                          # Entraînement TCN PyTorch (Phase 9 ✅)
+├── eval_ppi.py                       # Évaluation TCN vs PPI réels (Phase 9 ✅)
 ├── export_weights.py                 # Export poids → tcn_weights.h (intégré au CMake)
 ├── ml_env/
 │   └── cpc_model.pt                  # Modèle entraîné (9 441 paramètres)
-├── test/
-│   ├── 10th_Frame__RERELEASE_KIXX.wav      # PPI, 44100 Hz, 8 bits
-│   ├── k7 - 10th frames (US Gold - 1986).wav  # PPI, 44100 Hz, 8 bits
-│   ├── k7 - Mach 3 (Loriciel - 1987).wav   # PPI, 44100 Hz, 8 bits
-│   ├── Mach 3 16ST.wav                      # CASSETTE, 48000 Hz, 16 bits stéréo
-│   └── Mach 3 16ST_PPI.wav                  # PPI correspondant (= k7 - Mach 3 renommé)
-├── elec.bmp                              # Schéma du circuit de lecture cassette CPC
+├── test/                             # Fichiers WAV de test (gérés par Git LFS)
+│   ├── 3D Grand Prix Face A 16M.wav        # CASSETTE, 44100 Hz, 16 bits
+│   ├── 3D Grand Prix Face A 16M_PPI.wav    # PPI correspondant
+│   ├── 3d boxing (Amsoft - 1985).wav       # CASSETTE, 44100 Hz
+│   ├── 3d boxing (Amsoft - 1985)_PPI.wav  # PPI correspondant
+│   ├── Bomb Jack Face A 16M.wav            # CASSETTE, 44100 Hz, 16 bits
+│   ├── Bomb Jack.wav                       # PPI correspondant
+│   ├── Bride of Frankenstein Face A 16M.wav # CASSETTE, 44100 Hz, 16 bits
+│   ├── Bride of Frankenstein.wav           # PPI — structure différente (score ~50%)
+│   ├── Bridge-It Face A 16M.wav            # CASSETTE, 44100 Hz, 16 bits
+│   ├── bridge-it.wav                       # PPI correspondant
+│   ├── City Slicker Face A 16M.wav         # CASSETTE, 44100 Hz, 16 bits (2 blocs parasites)
+│   ├── City Slicker.wav                    # PPI correspondant (2 blocs)
+│   ├── Combat School - Levels.wav          # PPI
+│   ├── Combat School Demo.wav              # PPI
+│   ├── Combat School Face A 16M.wav        # CASSETTE, 44100 Hz, 16 bits
+│   ├── Combat School.wav                   # PPI correspondant
+│   ├── Dan Dare Face A 16M.wav             # CASSETTE, 44100 Hz, 16 bits
+│   ├── Dan Dare.wav                        # PPI correspondant
+│   ├── Desert Fox Face A 16M.wav           # CASSETTE, 44100 Hz, 16 bits
+│   ├── Desert Fox.wav                      # PPI correspondant
+│   ├── Dragon's Lair Face B 16M.wav        # CASSETTE, 44100 Hz, 16 bits
+│   ├── Dragons lair.wav                    # PPI correspondant
+│   ├── Enduro Racer Face A 16M.wav         # CASSETTE, 44100 Hz, 16 bits
+│   ├── Enduro Racer.wav                    # PPI correspondant
+│   ├── Fairlight Face A 16M.wav            # CASSETTE, 44100 Hz, 16 bits
+│   ├── Fairlight.wav                       # PPI correspondant
+│   ├── Formula One Simulator Face A 16M.wav # CASSETTE, 44100 Hz, 16 bits
+│   ├── Formula 1 Simulator.wav             # PPI (non apparié — nom trop différent)
+│   ├── Future Knight Face A 16M.wav        # CASSETTE, 44100 Hz, 16 bits
+│   ├── Future Knight.wav                   # PPI (non apparié — à vérifier)
+│   ├── Golf Trophee Face A 16M.wav         # CASSETTE, 44100 Hz, 16 bits
+│   ├── Golf.wav                            # PPI (non apparié — nom trop différent)
+│   ├── Green Beret Face A 16M.wav          # CASSETTE, 44100 Hz, 16 bits
+│   ├── Green Beret.wav                     # PPI correspondant
+│   ├── Gryzor Face B 16M.wav               # CASSETTE, 44100 Hz, 16 bits
+│   ├── Gryzor.wav                          # PPI (non apparié — Face B, à vérifier)
+│   ├── Mach 3 16ST.wav                     # CASSETTE, 48000 Hz, 16 bits stéréo
+│   └── Mach 3 16ST_PPI.wav                 # PPI correspondant
+├── converted/                        # Fichiers WAV générés (gitignored)
+├── out_dataset/                      # Dataset ML exporté (gitignored)
+├── elec.bmp                          # Schéma du circuit de lecture cassette CPC
 ├── CONTEXT.md
 └── CMakeLists.txt
 ```
+
+### Conventions de nommage des paires
+L'appariement cassette ↔ PPI supporte plusieurs conventions (par ordre de priorité) :
+1. `Name_PPI.wav` pour le PPI de `Name.wav`
+2. `Name.wav` (PPI) pour `Name Face A 16M.wav` (cassette) — suffixes ` Face X 16M` / ` 16ST` supprimés, apostrophes/tirets normalisés (ex : `Dragon's Lair Face B 16M` ↔ `Dragons lair`)
+3. Fallback structurel si le speed ratio est dans [0.5, 2.0]
 
 ### Compilation (CMake — recommandé)
 ```bash
@@ -77,6 +119,7 @@ g++ -std=c++17 -O2 -Isrc \
 ./cpc_wav_analyzer fichier1.wav fichier2.wav # analyse + appariement + conversion
 ./cpc_wav_analyzer --batch répertoire/       # traitement batch
 ./cpc_wav_analyzer --export-dataset src/ out/ # export paires de blocs (dataset ML)
+# Les WAV générés sont toujours écrits dans converted/ (créé automatiquement, gitignored)
 ```
 
 ### Intégration émulateur (libtape_to_ppi)
@@ -101,7 +144,11 @@ Lier avec `-Iexport export/tcn_tape_to_ppi.cpp export/tape_to_ppi_converter.cpp`
 - Normalisation float [-1.0, +1.0]
 - Détection cassette vs PPI par normalisation enveloppe locale + analyse de dérivée :
   - PPI : spikeRatio > 2% ET avgSpikeWidth < 3 samples
-  - CASSETTE : spikeRatio faible (signal sinusoïdal, dérivée lisse)
+  - CASSETTE : `activeCount > 0` (signal actif mais pas de spikes → sinusoïdal)
+  - UNKNOWN : signal trop faible (aucun sample actif)
+- **Correction** : le test utilisait `edgeCount > 0` pour CASSETTE — or les signaux
+  sinusoïdaux purs ne dépassent jamais le seuil DERIV_SPIKE=0.7, donc edgeCount=0.
+  Correction : `activeCount > 0` → les fichiers 16M/16ST sont désormais classifiés CASSETTE.
 
 ### Phase 2 — Segmentation ✅
 - Enveloppe locale (two-pass peak-hold, 5 ms) pour détecter silences/activité
@@ -131,25 +178,33 @@ Lier avec `-Iexport export/tcn_tape_to_ppi.cpp export/tape_to_ppi_converter.cpp`
 - Sync bloc 1 obligatoire pour valider quoi que ce soit
 
 ### Phase 5 — Appariement cassette ↔ PPI ✅
-- Appariement séquentiel des blocs (même index)
-- Speed ratio = médiane(dur2/dur1) sur les blocs > 0.5 s
+- Appariement séquentiel des blocs avec recherche d'offset (MAX_SKIP=2)
+- Speed ratio = médiane(dur_ppi/dur_cassette) sur les blocs > 0.5 s
 - Consistance = 1 − CV×5 (coefficient de variation des ratios)
 - Confiance : nombre de blocs (+0.35), CV bas (+0.35), structures compatibles (+0.20), même protection (+0.10)
 - Résultat : MATCHED ≥ 0.70, PARTIAL ≥ 0.40, FAILED sinon
+- **Correction tiebreaker** : à CV égal, préférer l'alignement avec le plus de paires
+  (avant : préférait moins de sauts, ce qui sélectionnait des alignements dégénérés à 1 paire
+  avec CV=0 trivial au détriment d'alignements à 2 paires consistants — ex : City Slicker ratio ×405)
 
 ### Phase 6 — Conversion signal ✅
 - **Cassette → PPI** : comparateur adaptatif (DC offset 50 ms + hystérésis 8% RMS locale 10 ms)
 - **PPI → Cassette** : filtfilt IIR passe-bas (cutoff = 3× fréquence pilote) + renormalisation
 - Écriture WAV PCM 16 bits signé mono (`wav_writer`)
 - En mode 2 fichiers : conversion automatique si sources différentes, validation après conversion
+- Les fichiers générés sont écrits dans `converted/` (créé automatiquement, gitignored)
 
 ### Phase 7 — Affinage, validation batch et export émulateur ✅
 - **Validateur** (`conversion_validator`) : score par bloc comparant pilote (fréquence, durée),
   codage S/L en µs avec correction du speed ratio, et sync 0x16 du converti vs PPI de référence
   — comparaison en µs (pas en samples) pour s'affranchir des différences de sample rate entre
   cassette (48000 Hz) et PPI (44100 Hz) ; `sampleRate` ajouté dans `BlockAnalysis`
+- **Correction** : `validateConversion` prend maintenant un paramètre `pairs` (issu du dump_matcher)
+  pour aligner correctement les blocs converti/référence via leurs indices (idx1/idx2) au lieu
+  d'un appariement séquentiel aveugle — critique pour les cassettes avec blocs parasites (City Slicker)
 - **Mode batch** (`--batch répertoire/`) : analyse tous les WAV, appariement automatique
-  cassettes × PPI, conversion + validation, bilan global ; ignore les fichiers générés
+  cassettes × PPI (par nom puis structurel), conversion + validation, bilan global ;
+  ignore les fichiers générés (suffixes `_to_PPI.wav`, `_to_cassette.wav`)
 - **Export émulateur** (`export/tape_to_ppi_converter.h/.cpp`) :
   - Classe `TapeToPPIConverter` causale, traitement échantillon par échantillon
   - Filtre passe-haut IIR (couplage AC, fc=7.2 Hz, τ=R318×C319=22 ms)
@@ -163,15 +218,16 @@ Lier avec `-Iexport export/tcn_tape_to_ppi.cpp export/tape_to_ppi_converter.cpp`
   - Pour chaque bloc apparié : `block_NNNN_cassette.wav` + `block_NNNN_ppi.wav`
   - `dataset.json` : métadonnées complètes par bloc (protection, structure, sample rates,
     speed ratio, durée, fréquence pilote, fichiers source, indices de blocs)
-  - Objectif : constituer un dataset pour entraîner un modèle TCN de conversion cassette→PPI
-  - Estimation : 50–100 paires de fichiers → ~300–600 paires de blocs (avant augmentation)
+  - Dataset courant : 14 jeux, ~183 paires de blocs (mis à jour avec nouveaux jeux)
 
 ### Phase 9 — Modèle TCN + export C++ ✅
 - **Entraînement** (`train.py`) :
   - Modèle : TCN léger 9 441 paramètres (3× Conv1d 1→16→32→16, k=9 + Linear 16→1)
   - Cible : Schmitt trigger adaptatif C++ (signal_converter) — supervision directe par PPI réel
     impossible (précision sub-sample requise < T/10 ≈ 1.7 samples, incompatible avec speed_ratio global)
-  - Dataset : 32 blocs train (22 Standard ROM 3D Grand Prix + 4 Speedlock Mach 3) / 6 blocs test
+  - Split par jeu (jamais les mêmes jeux en train et test) :
+    - **Train** : Mach 3, Bomb Jack, Bride of Frankenstein, Bridge-It, City Slicker, 3D Grand Prix, 3d boxing
+    - **Test** : Dan Dare, Desert Fox, Dragon's Lair, Combat School
   - Résultats : **99.79% accuracy test** après 30 époques (~15 min CPU)
   - Modèle sauvegardé : `ml_env/cpc_model.pt`
 - **Export poids** (`export_weights.py`) :
@@ -186,63 +242,56 @@ Lier avec `-Iexport export/tcn_tape_to_ppi.cpp export/tape_to_ppi_converter.cpp`
 - **Tests** (`tests/test_tcn_inference.cpp`) :
   - 14/14 tests passés : bipolaire, duty cycle, précision vs Schmitt ≥ 98%
   - Blocs testés : Mach 3 Speedlock (48 kHz) + 3D Grand Prix Standard ROM (44,1 kHz)
+  - Indices dataset : bloc 0000/0010 = 3D Grand Prix, bloc 0030/0031 = Mach 3
+- **Évaluation vs PPI réels** (`eval_ppi.py`) :
+  - Métrique : classification S/L des intervalles entre transitions (robuste au speed ratio et
+    à la durée du pilote, comparable au validateur C++)
+  - Usage : `python3 eval_ppi.py` (tous blocs) ou `python3 eval_ppi.py --quick` (5 blocs/jeu)
+  - Résultats (14 jeux, 66 blocs quick) : **TCN 94.5%, Schmitt 94.8%, Δ = -0.3%**
+    - TRAIN (7 jeux) : TCN 95.4% / Schmitt 95.9%
+    - TEST (4 jeux vus) : TCN ~97% / Schmitt ~97%
+    - Nouveaux jeux (Enduro Racer, Fairlight) : 100% / 99.9% — généralisation validée
+    - Green Beret (nouveau) : 89.5% — bloc 0178 à 74% (Schmitt 87%) → candidat re-training
 
 ---
 
 ## Validation sur fichiers réels
 
-### Phase 1 (détection source) — 4/4 ✓
+### Détection source — résultats actuels
 
 | Fichier | Source réelle | Détecté |
 |---------|--------------|---------|
-| `k7 - 10th frames (US Gold - 1986).wav` | PPI | PPI ✓ |
-| `k7 - Mach 3 (Loriciel - 1987).wav` | PPI | PPI ✓ |
 | `Mach 3 16ST.wav` | CASSETTE | CASSETTE ✓ |
-| `10th_Frame__RERELEASE_KIXX.wav` | PPI | PPI ✓ |
+| `3D Grand Prix Face A 16M.wav` | CASSETTE | CASSETTE ✓ |
+| `Combat School Face A 16M.wav` | CASSETTE | CASSETTE ✓ |
+| `Mach 3 16ST_PPI.wav` | PPI | PPI ✓ |
+| `Combat School.wav` | PPI | PPI ✓ |
 
-### Phase 3 (analyse de blocs) — résultats observés
+Les fichiers 16 bits enregistrés depuis cassette (signaux sinusoïdaux purs) sont
+correctement classifiés CASSETTE depuis la correction `activeCount > 0`.
 
-| Fichier | Blocs | Bloc 1 pilote | Bloc 1 0x16 | Notes |
-|---------|-------|--------------|-------------|-------|
-| `10th_Frame__RERELEASE_KIXX.wav` | 5 | 760 Hz, S=15 L=30 | ✓ | Blocs 3-5 : données courtes, 0x16 non décodé |
-| `Mach 3 16ST.wav` | 6 | 1412 Hz, S=8 L=18 | ✓ | Blocs 3-5 sans pilote (loader custom) |
-| `k7 - 10th frames (US Gold - 1986).wav` | 5 | 735 Hz, S=16 L=30 | ✓ | Blocs 1-2 à 735 Hz, blocs 3-5 à 760 Hz |
-| `k7 - Mach 3 (Loriciel - 1987).wav` | 6 | 1378 Hz, S=8 L=16 | ✓ | Blocs 2-5 sans pilote (loader custom) |
+### Appariement batch — résultats sur test/ (~37 fichiers)
 
-### Phase 5 (appariement) — résultats observés
+| Paire | Mode | Speed ratio | Score |
+|-------|------|-------------|-------|
+| Mach 3 16ST ↔ Mach 3 16ST_PPI | nom (_PPI) | ×1.024 | ~81% |
+| 3D Grand Prix ↔ 3D Grand Prix_PPI | nom (_PPI) | ×0.546 | ~85%+ |
+| City Slicker ↔ City Slicker | nom (normalisé) | ×1.0xx | correct depuis fix tiebreaker |
+| Dragon's Lair ↔ Dragons lair | nom (normalisé) | ×1.0xx | correct depuis fix normalizeName |
+| Bomb Jack, Bridge-It, Desert Fox, Dan Dare, Combat School… | nom (normalisé) | — | appariés |
+| Enduro Racer, Fairlight, Green Beret | nom (normalisé) | — | appariés |
+| Bride of Frankenstein | nom (normalisé) | — | ~50% (structure différente, probable version différente) |
+| Formula One Simulator, Future Knight, Golf Trophee, Gryzor | — | — | non appariés (noms trop différents) |
 
-| Paire | Résultat | Confiance | Speed ratio | Notes |
-|-------|---------|-----------|-------------|-------|
-| Mach 3 cassette ↔ PPI | APPARIÉ | 100% | ×1.0239 | PPI 2.4% plus lent |
-| 10th Frame PPI ↔ PPI | APPARIÉ | 75% | ×1.0856 | Deux fichiers PPI — même source |
+### Cas particuliers connus
 
-### Phase 7 (conversion + validation) — résultats observés
-
-| Paire | Score conversion | Notes |
-|-------|----------------|-------|
-| Mach 3 16ST → PPI | 81% | Pilote 0% d'erreur, L/S err=12.5% |
-
-### Test batch (mode `--batch test/`) — 13 fichiers
-
-| Fichier | Source | Blocs | Protection |
-|---------|--------|-------|------------|
-| `10th_Frame__RERELEASE_KIXX.wav` | PPI | 5 | Standard ROM |
-| `k7 - 10th frames (US Gold - 1986).wav` | PPI | 5 | Standard ROM |
-| `k7 - Mach 3 (Loriciel - 1987).wav` | PPI | 6 | Speedlock |
-| `Mach 3 16ST.wav` | CASSETTE | 6 | Speedlock |
-| `Combat School.wav` | PPI | 8 | Standard ROM |
-| `Combat School Demo.wav` | PPI | 3 | Standard ROM |
-| `Combat School - Levels.wav` | PPI | 5 | — |
-| `Gryzor.wav` | PPI | 6 | Standard ROM |
-| `BB6BCSW.WAV` | PPI | 1 | — |
-| `Big Box Face 6B 16ST.wav` | ? | 30 | Standard ROM |
-| `Combat School Face A 16M.wav` | ? | 11 | — |
-| `Combat School Face B 16M.wav` | ? | 11 | Standard ROM |
-| `Gryzor 16M image + bloc 1 + bloc 2 data ok.wav` | ? | 5 | Standard ROM |
-
-**Problèmes identifiés :**
-- Les fichiers `16M` / `16ST` (enregistrements cassette 16-bit) sont classifiés `?` au lieu de `CASSETTE` → à corriger dans `source_detector`
-- Faux match `Mach 3 16ST` ↔ `BB6BCSW.WAV` à ratio ×631 (absurde) — le filtre sur speed ratio doit rejeter les ratios hors [0.5, 2.0]
+- **City Slicker** : la cassette contient 2 blocs parasites avant les données (blocs 0 et 1),
+  le PPI n'en a pas. L'appariement était faussé (ratio ×405) jusqu'au fix du tiebreaker dans
+  `dump_matcher` (morePairs > fewerSkips à CV égal) et du fix du validateur (pairs mapping).
+- **Bride of Frankenstein** : cassette à 1470 Hz / sync 0xFF ; PPI à 735 Hz / sync 0x16 —
+  les deux fichiers semblent correspondre à des versions différentes du jeu. Score ~50%, normal.
+- **Dragon's Lair** : `Dragon's Lair Face B 16M.wav` n'était pas apparié par nom car l'apostrophe
+  empêchait la comparaison. Résolu par `normalizeName()` qui supprime la ponctuation.
 
 ---
 
@@ -309,3 +358,24 @@ au câblage hardware CPC : seule la pointe du jack stéréo est connectée à l'
 - Étage 2 — Schmitt trigger fixe : hystérésis ≈ 12% (R307 = 47 kΩ, IC302 pins 9/10/8)
 - Note de polarité : 3 inversions au total (transistor + 2 comparateurs) → sortie inversée
 - `setACCouplingHz(hz)`, `setHysteresis1(frac)`, `setHysteresis2(frac)` pour ajustement fin
+
+### Régression accuracy TCN (époques 25-30)
+La régression de ~0.3% entre les époques 25 et 30 est un artefact du LR fixe (1e-3) :
+à >99% accuracy, les fluctuations stochastiques (~1000 samples) font osciller la courbe.
+Piste d'amélioration : LR scheduler (ReduceLROnPlateau ou CosineAnnealing) + sauvegarde
+du meilleur modèle (pas encore implémenté).
+
+### Évaluation TCN vs PPI réels — méthodologie (`eval_ppi.py`)
+La comparaison sample-à-sample cassette↔PPI est impossible (voir note dans `train.py`).
+La métrique correcte : **classification S/L des intervalles** entre transitions.
+- Extraction des intervalles en µs de la sortie TCN et du PPI binarisé (`> 0.0`)
+- Détection automatique de la fin du pilote par fenêtre glissante (IQR/médiane < 0.30)
+- Speed ratio estimé par ratio des médianes de pilote (TCN vs PPI)
+- Seuil S/L = 1.5 × demi-période pilote ; comparaison séquentielle des bits après pilote
+- Métrique invariante à la durée du pilote (pas de comparaison globale depuis t=0)
+
+### Jeux non appariés dans test/ (noms trop différents)
+- `Formula One Simulator Face A 16M.wav` ↔ `Formula 1 Simulator.wav` — à renommer
+- `Golf Trophee Face A 16M.wav` ↔ `Golf.wav` — à renommer ou ajouter alias
+- `Future Knight Face A 16M.wav` ↔ `Future Knight.wav` — devrait s'apparier (à débugger)
+- `Gryzor Face B 16M.wav` ↔ `Gryzor.wav` — Face B, structure peut-être différente
