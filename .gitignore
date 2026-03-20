@@ -19,3 +19,6 @@ out_dataset/
 
 # Mémoire Claude (usage local)
 .claude/
+
+# Cache Python
+__pycache__/
