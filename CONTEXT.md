@@ -83,13 +83,13 @@ Tape2PPI/
 │   ├── Golf.wav                            # PPI (non apparié — nom trop différent)
 │   ├── Green Beret Face A 16M.wav          # CASSETTE, 44100 Hz, 16 bits
 │   ├── Green Beret.wav                     # PPI correspondant
-│   ├── Gryzor 16M image + bloc 1 + bloc 2 data ok.wav  # rôle à déterminer (PPI Gryzor ?)
+│   ├── Gryzor 16M image + bloc 1 + bloc 2 data ok.wav  # CASSETTE, 44100 Hz, 16 bits
 │   ├── Gryzor Face B 16M.wav               # CASSETTE, 44100 Hz, 16 bits
 │   ├── Gryzor.wav                          # PPI (non apparié — Face B, à vérifier)
-│   ├── Highlander - Part 1.wav             # PPI (partie 1)
-│   ├── Highlander - Part 2.wav             # PPI (partie 2)
-│   ├── Highlander - Part 3.wav             # PPI (partie 3)
-│   ├── Highlander Face A 16M.wav           # CASSETTE, 44100 Hz, 16 bits
+│   ├── Highlander.wav                      # CASSETTE, 44100 Hz, 16 bits
+│   ├── Highlander_PPI_1.wav                # PPI (partie 1/3)
+│   ├── Highlander_PPI_2.wav                # PPI (partie 2/3)
+│   ├── Highlander_PPI_3.wav                # PPI (partie 3/3)
 │   ├── Mach 3 16ST.wav                     # CASSETTE, 48000 Hz, 16 bits stéréo
 │   ├── Mach 3 16ST_PPI.wav                 # PPI correspondant
 │   ├── Manic Miner 16M.wav                 # rôle à déterminer (cassette alternative ?)
@@ -99,7 +99,7 @@ Tape2PPI/
 │   ├── Oh Mummy.wav                        # PPI correspondant
 │   ├── Revolution Face A 16M.wav           # CASSETTE, 44100 Hz, 16 bits
 │   ├── Revolution.wav                      # PPI correspondant
-│   ├── Roland In Caves.wav                 # PPI correspondant
+│   ├── Roland in the Caves.wav             # PPI correspondant
 │   ├── Roland On The Ropes 16M.wav         # CASSETTE, 44100 Hz, 16 bits
 │   ├── Roland in the Caves Face A 16M.wav  # CASSETTE, 44100 Hz, 16 bits
 │   ├── Roland on the ropes.wav             # PPI correspondant
@@ -300,22 +300,37 @@ Lier avec `-Iexport export/tcn_tape_to_ppi.cpp export/tape_to_ppi_converter.cpp`
 | `Combat School Face A 16M.wav` | CASSETTE | CASSETTE ✓ |
 | `Mach 3 16ST_PPI.wav` | PPI | PPI ✓ |
 | `Combat School.wav` | PPI | PPI ✓ |
+| `Future Knight Face A 16M.wav` | CASSETTE | **PPI ✗** — fausse détection |
+| `Gryzor Face B 16M.wav` | CASSETTE | **PPI ✗** — fausse détection |
+| `10th_Frame.wav` | CASSETTE (?) | **PPI** — peut-être vraiment un PPI |
 
 Les fichiers 16 bits enregistrés depuis cassette (signaux sinusoïdaux purs) sont
 correctement classifiés CASSETTE depuis la correction `activeCount > 0`.
+Exception : `Future Knight Face A 16M.wav` et `Gryzor Face B 16M.wav` sont détectés PPI
+malgré leur suffixe — signal atypique (forte distorsion ou enregistrement non standard).
 
-### Appariement batch — résultats sur test/ (~37 fichiers)
+### Appariement batch — résultats sur test/ (~72 fichiers)
 
 | Paire | Mode | Speed ratio | Score |
 |-------|------|-------------|-------|
 | Mach 3 16ST ↔ Mach 3 16ST_PPI | nom (_PPI) | ×1.024 | ~81% |
 | 3D Grand Prix ↔ 3D Grand Prix_PPI | nom (_PPI) | ×0.546 | ~85%+ |
-| City Slicker ↔ City Slicker | nom (normalisé) | ×1.0xx | correct depuis fix tiebreaker |
-| Dragon's Lair ↔ Dragons lair | nom (normalisé) | ×1.0xx | correct depuis fix normalizeName |
-| Bomb Jack, Bridge-It, Desert Fox, Dan Dare, Combat School… | nom (normalisé) | — | appariés |
-| Enduro Racer, Fairlight, Green Beret | nom (normalisé) | — | appariés |
-| Bride of Frankenstein | nom (normalisé) | — | ~50% (structure différente, probable version différente) |
-| Formula One Simulator, Future Knight, Golf Trophee, Gryzor | — | — | non appariés (noms trop différents) |
+| 10th Frame ↔ 10th Frame_PPI | nom (_PPI) | — | non apparié (les deux détectés PPI) |
+| City Slicker ↔ City Slicker | nom (normalisé) | ×1.054 | ~90% |
+| Dragon's Lair ↔ Dragons lair | nom (normalisé) | ×0.999 | ~90% |
+| Bomb Jack, Bridge-It, Desert Fox, Dan Dare, Combat School… | nom (normalisé) | ~×1.0 | appariés |
+| Enduro Racer, Fairlight, Green Beret | nom (normalisé) | ~×1.0 | appariés |
+| Oh Mummy, Roland On The Ropes, Yie Ar Kung-Fu | nom (normalisé) | ~×1.04 | 90–100% |
+| Timeman One, Soul of a Robot, Silent Service, Sorcery Face B | nom (normalisé) | ~×1.04 | 80–95% |
+| Sultan's Maze ↔ Sultan Maze | nom (normalisé) | ×1.033 | 98% |
+| Bride of Frankenstein | nom (normalisé) | ×1.86 | ~52% (version différente) |
+| Revolution | nom (normalisé) | ×0.81 | ~20% (version différente, 5 vs 26 blocs) |
+| Sorcery Face A | nom (normalisé) | ×31.31 | SKIP (10 blocs cassette vs 2 blocs PPI — incompatible) |
+| Manic Miner 16M ↔ Manic Miner | nom (normalisé) | ×1.021 | 45% (enreg. alternatif) |
+| Roland in the Caves | nom (normalisé) | ~×1.04 | apparié après renommage PPI |
+| Big Box Face 6B ↔ BB6BCSW | — | — | non apparié — noms trop différents (à renommer) |
+| Highlander ↔ _PPI_1/2/3 | nom (_PPI_N) | — | 3 appariements multi-parties |
+| Formula One Simulator, Golf Trophee | — | — | non appariés (noms trop différents) |
 
 ### Cas particuliers connus
 
@@ -326,6 +341,19 @@ correctement classifiés CASSETTE depuis la correction `activeCount > 0`.
   les deux fichiers semblent correspondre à des versions différentes du jeu. Score ~50%, normal.
 - **Dragon's Lair** : `Dragon's Lair Face B 16M.wav` n'était pas apparié par nom car l'apostrophe
   empêchait la comparaison. Résolu par `normalizeName()` qui supprime la ponctuation.
+- **Revolution** : cassette 5 blocs Standard ROM vs PPI 26 blocs Speedlock — versions différentes,
+  appariement à 20% / ratio ×0.81, non exploitable.
+- **Sorcery** : Face A (10 blocs cassette) incompatible avec le PPI (2 blocs) — ratio ×31,
+  SKIP automatique. Face B (2 blocs) s'apparie correctement à 90%. Le PPI `Sorcery.wav`
+  correspond probablement à la Face B uniquement.
+- **Highlander** : cassette (`Highlander.wav`) = 24 blocs ; PPI en 3 fichiers de 6 blocs chacun
+  (`Highlander_PPI_1/2/3.wav`). Supporté depuis le fix `_PPI_N` dans `batch_processor` et
+  `dataset_exporter` — 3 paires distinctes générées. Les blocs sont probablement corrects mais
+  répartis dans un ordre différent entre cassette et dumps PPI (chargements successifs).
+- **Big Box Face 6B** : PPI = `BB6BCSW.WAV` (1 seul bloc) vs cassette 30 blocs — structures
+  incompatibles pour l'appariement. À renommer en `Big Box Face 6B 16ST_PPI.wav` pour clarté.
+- **Manic Miner** : deux enregistrements cassette (`16M` et `Face A 16M`) pour un seul PPI.
+  `Manic Miner 16M.wav` s'apparie à 45% (PARTIAL), `Manic Miner Face A 16M.wav` reste sans PPI.
 
 ---
 

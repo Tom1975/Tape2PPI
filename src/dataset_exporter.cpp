@@ -208,25 +208,32 @@ void exportDataset(const std::string& inputDir, const std::string& outputDir)
     std::vector<bool> ppiUsed(ppis.size(), false);
     std::vector<bool> casUsed(cassettes.size(), false);
 
-    // Appariement par nom : "X.wav" ↔ "X_PPI.wav"
+    // Appariement par nom : "X.wav" ↔ "X_PPI.wav" ou "X_PPI_N.wav" (multi-parties)
     for (size_t ci = 0; ci < cassettes.size(); ++ci) {
-        const std::string expected = baseStem(cassettes[ci]->filepath) + "_PPI";
+        const std::string ppiPrefix = baseStem(cassettes[ci]->filepath) + "_PPI";
         for (size_t pi = 0; pi < ppis.size(); ++pi) {
             if (ppiUsed[pi]) continue;
-            if (baseStem(ppis[pi]->filepath) == expected) {
-                const DumpMatch m = matchDumps(
-                    cassettes[ci]->seg.blocks, cassettes[ci]->analyses, cassettes[ci]->protection,
-                    ppis[pi]->seg.blocks,      ppis[pi]->analyses,      ppis[pi]->protection,
-                    /*skipProtectionCheck=*/true);
-                printf("  MATCH (nom)  %s\n"
-                       "               ↔ %s\n"
-                       "               confiance=%.0f%%  ratio=×%.4f  %d blocs appariés\n\n",
-                       cassettes[ci]->filepath.c_str(), ppis[pi]->filepath.c_str(),
-                       m.confidence * 100.0, m.speedRatio, m.matchedPairs);
-                matched.push_back({cassettes[ci], ppis[pi], m});
-                casUsed[ci] = ppiUsed[pi] = true;
-                break;
+            const std::string ppiBase = baseStem(ppis[pi]->filepath);
+            bool isPpiMatch = (ppiBase == ppiPrefix);
+            if (!isPpiMatch && ppiBase.size() > ppiPrefix.size() &&
+                ppiBase.substr(0, ppiPrefix.size() + 1) == ppiPrefix + "_") {
+                const std::string sfx = ppiBase.substr(ppiPrefix.size() + 1);
+                isPpiMatch = !sfx.empty() &&
+                             std::all_of(sfx.begin(), sfx.end(), ::isdigit);
             }
+            if (!isPpiMatch) continue;
+            const DumpMatch m = matchDumps(
+                cassettes[ci]->seg.blocks, cassettes[ci]->analyses, cassettes[ci]->protection,
+                ppis[pi]->seg.blocks,      ppis[pi]->analyses,      ppis[pi]->protection,
+                /*skipProtectionCheck=*/true);
+            printf("  MATCH (nom)  %s\n"
+                   "               ↔ %s\n"
+                   "               confiance=%.0f%%  ratio=×%.4f  %d blocs appariés\n\n",
+                   cassettes[ci]->filepath.c_str(), ppis[pi]->filepath.c_str(),
+                   m.confidence * 100.0, m.speedRatio, m.matchedPairs);
+            matched.push_back({cassettes[ci], ppis[pi], m});
+            casUsed[ci] = ppiUsed[pi] = true;
+            // pas de break : autorise plusieurs fichiers _PPI_N pour la même cassette
         }
     }
 
