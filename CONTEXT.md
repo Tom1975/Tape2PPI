@@ -281,11 +281,14 @@ Lier avec `-Iexport export/tcn_tape_to_ppi.cpp export/tape_to_ppi_converter.cpp`
   - Métrique : classification S/L des intervalles entre transitions (robuste au speed ratio et
     à la durée du pilote, comparable au validateur C++)
   - Usage : `python3 eval_ppi.py` (tous blocs) ou `python3 eval_ppi.py --quick` (5 blocs/jeu)
-  - Résultats (14 jeux, 66 blocs quick) : **TCN 94.5%, Schmitt 94.8%, Δ = -0.3%**
-    - TRAIN (7 jeux) : TCN 95.4% / Schmitt 95.9%
-    - TEST (4 jeux vus) : TCN ~97% / Schmitt ~97%
-    - Nouveaux jeux (Enduro Racer, Fairlight) : 100% / 99.9% — généralisation validée
-    - Green Beret (nouveau) : 89.5% — bloc 0178 à 74% (Schmitt 87%) → candidat re-training
+  - Résultats Phase 10 (28 jeux, 132 blocs quick, dataset 339 blocs) :
+    **TCN 95.9%, Schmitt 95.5%, Δ = +0.4%** — TCN dépasse Schmitt pour la première fois
+    - TRAIN (7 jeux) : TCN 95.5% / Schmitt 95.9% (Δ -0.3%)
+    - TEST (21 jeux) : TCN 96.0% / Schmitt 95.4% (Δ **+0.6%**) — généralisation validée
+    - Gains TCN vs Schmitt : Desert Fox +3.1%, Silent Service +4.2%
+    - Cas difficiles : Dan Dare 70.9%, Highlander 83.8% (appariement multi-parties)
+    - Green Beret 89.5% — bloc 0196 à 75% (Schmitt 86.7%) → candidat re-training
+  - Note : lancer avec `PYTHONIOENCODING=utf-8` sur Windows (sinon crash sur le résumé UTF-8)
 
 ---
 
