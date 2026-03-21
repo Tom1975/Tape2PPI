@@ -12,6 +12,7 @@
 
 #include "tape_to_ppi_converter.h"
 
+#define _USE_MATH_DEFINES
 #include <cmath>
 
 // ============================================================

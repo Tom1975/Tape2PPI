@@ -30,7 +30,7 @@ def format_floats(values, cols=8):
 
 state = torch.load(MODEL_PATH, map_location='cpu')
 
-with open(OUTPUT_PATH, 'w') as f:
+with open(OUTPUT_PATH, 'w', encoding='utf-8') as f:
     f.write('// Auto-généré par export_weights.py — NE PAS ÉDITER\n')
     f.write('// Modèle : TinyCpaTCN  (3× Conv1d k=9 + Linear)\n')
     f.write('#pragma once\n\n')
